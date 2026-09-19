@@ -1330,7 +1330,7 @@ function registerMeasured(){
   document.getElementById('saveMeasuredLand').onclick=()=>{let nl=buildLand();if(!nl.name){toast('نام زمین را وارد کن');document.getElementById('newLandName').focus();return}state.lands.push(nl);save();selected=nl.id;closeReg();toast('زمین با همه مشخصات ذخیره شد');measureReturn='land';setTimeout(()=>{closeMeasure();openLand(nl.id)},120)};
 }
 /* ===== PROFESSIONAL KESHAVAR-YAR V2 ===== */
-const YAR_CHAT_KEY='yk-yar-chat-v4';
+const YAR_CHAT_KEY='yk-yar-offline-chat-v1';
 let yarMessages=(()=>{try{const a=JSON.parse(localStorage.getItem(YAR_CHAT_KEY)||'[]');return Array.isArray(a)?a.filter(m=>!(m&&m.role==='bot'&&typeof m.text==='string'&&m.text.includes('سؤال را آزادانه بپرس'))):[]}catch(e){return[]}})();
 let yarPhotoData=null, yarPhotoName='';
 try{
