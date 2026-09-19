@@ -1,4 +1,4 @@
-import agricultureDB from "./agriculture-db.js";
+import agricultureDB from "./agriculture-db-extended.js";
 
 const KNOWLEDGE_KEY = "yk-admin-knowledge-v1";
 
