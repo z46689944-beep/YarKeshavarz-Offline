@@ -14,10 +14,57 @@ function normalize(text = "") {
     .trim();
 }
 
+/* کلمات عمومی سؤال که نباید باعث انتخاب محصول اشتباه شوند */
+const STOP_WORDS = new Set([
+  "چیست",
+  "چیست؟",
+  "چیه",
+  "چه",
+  "چگونه",
+  "چطور",
+  "چرا",
+  "کی",
+  "کِی",
+  "زمان",
+  "زمانی",
+  "است",
+  "هست",
+  "هستند",
+  "دارد",
+  "دارند",
+  "شود",
+  "شود؟",
+  "باید",
+  "برای",
+  "در",
+  "از",
+  "به",
+  "با",
+  "را",
+  "که",
+  "این",
+  "آن",
+  "یک",
+  "و",
+  "یا",
+  "من",
+  "می",
+  "کنم",
+  "کنیم",
+  "کنید",
+  "مناسب",
+  "لازم",
+  "نیاز"
+]);
+
 function tokens(text = "") {
   return normalize(text)
     .split(" ")
     .filter(x => x.length > 1);
+}
+
+function meaningfulTokens(text = "") {
+  return tokens(text).filter(x => !STOP_WORDS.has(x));
 }
 
 function getManagerKnowledge() {
@@ -47,29 +94,41 @@ function scoreItem(question, questionTokens, item) {
     ? item.keywords
     : [];
 
+  const topicTokens = meaningfulTokens(topic);
+
+  /* تطبیق دقیق نام موضوع */
   if (topic && question === topic) {
+    score += 30;
+  }
+
+  /* موضوع به صورت کامل داخل سؤال */
+  if (topic && question.includes(topic)) {
     score += 15;
   }
 
-  if (topic && question.includes(topic)) {
-    score += 8;
+  /* تطبیق کلمات اصلی موضوع */
+  for (const token of topicTokens) {
+    if (questionTokens.includes(token)) {
+      score += 6;
+    }
   }
 
+  /* تطبیق کلیدواژه‌ها */
   for (const rawKeyword of keywords) {
     const keyword = normalize(rawKeyword);
 
     if (!keyword) continue;
 
     if (question.includes(keyword)) {
-      score += keyword.includes(" ") ? 6 : 3;
+      score += keyword.includes(" ") ? 8 : 5;
       continue;
     }
 
-    const keywordTokens = tokens(keyword);
+    const keywordTokens = meaningfulTokens(keyword);
 
     for (const token of keywordTokens) {
       if (questionTokens.includes(token)) {
-        score += 1;
+        score += 2;
       }
     }
   }
@@ -79,7 +138,7 @@ function scoreItem(question, questionTokens, item) {
 
 function searchKnowledge(question) {
   const q = normalize(question);
-  const qTokens = tokens(q);
+  const qTokens = meaningfulTokens(q);
 
   const managerDB = getManagerKnowledge();
 
@@ -143,14 +202,18 @@ function findOfflineAnswer(question = "") {
 
   const result = searchKnowledge(q);
 
-  if (!result.item || result.score < 2) {
+  /*
+   * اگر تطبیق واقعی با موضوع یا کلیدواژه پیدا نشده،
+   * هرگز یک محصول نامرتبط را به عنوان جواب انتخاب نکن.
+   */
+  if (!result.item || result.score < 5) {
     return (
       "🌱 یار کشاورز آفلاین\n\n" +
-      "برای این سؤال در پایگاه دانش آفلاین پاسخ کافی پیدا نکردم.\n\n" +
-      "نام محصول، نشانه، مرحله رشد یا موضوع را دقیق‌تر بنویس؛ " +
-      "مثلاً «گوجه، برگ زرد» یا «گندم، زمان آبیاری».\n\n" +
-      "ℹ️ برای داده‌های زنده مثل آب‌وهوا یا تحلیل تصویری هوش مصنوعی، " +
-      "از نسخه آنلاین استفاده کن."
+      "برای این سؤال هنوز پاسخ دقیق و مطمئنی در پایگاه دانش آفلاین ندارم.\n\n" +
+      "لطفاً نام محصول، نشانه یا موضوع را دقیق‌تر بنویس؛ " +
+      "مثلاً «گندم، زمان آبیاری» یا «گوجه، برگ زرد».\n\n" +
+      "ℹ️ من ترجیح می‌دهم وقتی اطلاعات کافی ندارم، " +
+      "جواب حدسی یا مربوط به محصول دیگری ندهم."
     );
   }
 
@@ -165,4 +228,4 @@ if (typeof window !== "undefined") {
     findOfflineAnswer,
     searchKnowledge
   };
-        }
+                     }
