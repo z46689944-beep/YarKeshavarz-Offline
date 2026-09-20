@@ -165,4 +165,4 @@ if (typeof window !== "undefined") {
     findOfflineAnswer,
     searchKnowledge
   };
-                 }
+        }
