@@ -1497,7 +1497,8 @@ function yarPriorityPlan(id){
 }
 
 function yar(){
-  const mod = await import('./offline/offline-ai.js?v=4');
+function yar(){
+  if(mode==='land') selected=l.id; else {l=null; selected=null;}
   if(mode==='land') selected=l.id; else {l=null; selected=null;}
   head(l?'کشاورزیار — '+l.name:'کشاورزیار');
   if(!yarMessages.length)yarMessages=[{role:'bot',text:l?`سلام 🌱 من کشاورزیارِ «${l.name}» هستم. پرونده این قطعه را در اختیار دارم و می‌توانی هر سؤال، عکس یا درخواست تحلیل را مطرح کنی.`:'سلام 🌱 من کشاورزیارم. دستیار عمومی کشاورزی هستم؛ بدون انتخاب زمین، هر سؤال کشاورزی یا عکس را می‌توانی برای بررسی بفرستی.'}];
