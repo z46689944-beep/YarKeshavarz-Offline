@@ -14,10 +14,8 @@ function normalize(text = "") {
     .trim();
 }
 
-/* کلمات عمومی سؤال که نباید باعث انتخاب محصول اشتباه شوند */
 const STOP_WORDS = new Set([
   "چیست",
-  "چیست؟",
   "چیه",
   "چه",
   "چگونه",
@@ -33,7 +31,6 @@ const STOP_WORDS = new Set([
   "دارد",
   "دارند",
   "شود",
-  "شود؟",
   "باید",
   "برای",
   "در",
@@ -67,6 +64,43 @@ function meaningfulTokens(text = "") {
   return tokens(text).filter(x => !STOP_WORDS.has(x));
 }
 
+/*
+ * بررسی می‌کند که یک کلمه یا عبارت،
+ * به صورت کامل داخل سؤال وجود داشته باشد.
+ *
+ * مثال:
+ * دام  ← داخل «بادام» پیدا نمی‌شود
+ * دام  ← داخل «تغذیه دام» پیدا می‌شود
+ */
+function containsTerm(text, term) {
+  const q = normalize(text);
+  const t = normalize(term);
+
+  if (!q || !t) return false;
+
+  const qTokens = q.split(" ").filter(Boolean);
+  const tTokens = t.split(" ").filter(Boolean);
+
+  if (tTokens.length === 1) {
+    return qTokens.includes(tTokens[0]);
+  }
+
+  for (let i = 0; i <= qTokens.length - tTokens.length; i++) {
+    let match = true;
+
+    for (let j = 0; j < tTokens.length; j++) {
+      if (qTokens[i + j] !== tTokens[j]) {
+        match = false;
+        break;
+      }
+    }
+
+    if (match) return true;
+  }
+
+  return false;
+}
+
 function getManagerKnowledge() {
   try {
     const raw = localStorage.getItem(KNOWLEDGE_KEY);
@@ -77,7 +111,9 @@ function getManagerKnowledge() {
     return data.map(item => ({
       category: "مدیریت",
       topic: item.title || item.topic || "دانش مدیریت",
-      keywords: Array.isArray(item.keywords) ? item.keywords : [],
+      keywords: Array.isArray(item.keywords)
+        ? item.keywords
+        : [],
       general: item.answer || item.general || "",
       solution: item.solution || ""
     }));
@@ -90,37 +126,42 @@ function scoreItem(question, questionTokens, item) {
   let score = 0;
 
   const topic = normalize(item.topic || "");
+
   const keywords = Array.isArray(item.keywords)
     ? item.keywords
     : [];
 
   const topicTokens = meaningfulTokens(topic);
 
-  /* تطبیق دقیق نام موضوع */
+  /* نام دقیق موضوع */
   if (topic && question === topic) {
     score += 30;
   }
 
-  /* موضوع به صورت کامل داخل سؤال */
-  if (topic && question.includes(topic)) {
+  /* موضوع به صورت کلمه/عبارت کامل */
+  if (topic && containsTerm(question, topic)) {
     score += 15;
   }
 
-  /* تطبیق کلمات اصلی موضوع */
+  /* کلمات اصلی موضوع */
   for (const token of topicTokens) {
     if (questionTokens.includes(token)) {
       score += 6;
     }
   }
 
-  /* تطبیق کلیدواژه‌ها */
+  /* کلیدواژه‌ها */
   for (const rawKeyword of keywords) {
     const keyword = normalize(rawKeyword);
 
     if (!keyword) continue;
 
-    if (question.includes(keyword)) {
-      score += keyword.includes(" ") ? 8 : 5;
+    /* کلیدواژه باید کلمه کامل باشد */
+    if (containsTerm(question, keyword)) {
+      score += keyword.includes(" ")
+        ? 8
+        : 5;
+
       continue;
     }
 
@@ -138,6 +179,7 @@ function scoreItem(question, questionTokens, item) {
 
 function searchKnowledge(question) {
   const q = normalize(question);
+
   const qTokens = meaningfulTokens(q);
 
   const managerDB = getManagerKnowledge();
@@ -151,7 +193,11 @@ function searchKnowledge(question) {
   let bestScore = 0;
 
   for (const item of database) {
-    const score = scoreItem(q, qTokens, item);
+    const score = scoreItem(
+      q,
+      qTokens,
+      item
+    );
 
     if (score > bestScore) {
       bestScore = score;
@@ -168,22 +214,27 @@ function searchKnowledge(question) {
 function buildAnswer(item) {
   let answer = "";
 
-  answer += `🌱 ${item.topic || "موضوع کشاورزی"}\n\n`;
+  answer +=
+    `🌱 ${item.topic || "موضوع کشاورزی"}\n\n`;
 
   if (item.symptoms) {
-    answer += `🔎 نشانه‌ها:\n${item.symptoms}\n\n`;
+    answer +=
+      `🔎 نشانه‌ها:\n${item.symptoms}\n\n`;
   }
 
   if (item.cause) {
-    answer += `⚠️ علت یا توضیح:\n${item.cause}\n\n`;
+    answer +=
+      `⚠️ علت یا توضیح:\n${item.cause}\n\n`;
   }
 
   if (item.general) {
-    answer += `${item.general}\n\n`;
+    answer +=
+      `${item.general}\n\n`;
   }
 
   if (item.solution) {
-    answer += `✅ راهکار کلی:\n${item.solution}\n\n`;
+    answer +=
+      `✅ راهکار کلی:\n${item.solution}\n\n`;
   }
 
   answer +=
@@ -203,13 +254,14 @@ function findOfflineAnswer(question = "") {
   const result = searchKnowledge(q);
 
   /*
-   * اگر تطبیق واقعی با موضوع یا کلیدواژه پیدا نشده،
-   * هرگز یک محصول نامرتبط را به عنوان جواب انتخاب نکن.
+   * اگر تطبیق قابل‌اعتماد پیدا نشد،
+   * هرگز پاسخ یک محصول نامرتبط را نشان نده.
    */
   if (!result.item || result.score < 5) {
     return (
       "🌱 یار کشاورز آفلاین\n\n" +
-      "برای این سؤال هنوز پاسخ دقیق و مطمئنی در پایگاه دانش آفلاین ندارم.\n\n" +
+      "برای این سؤال هنوز پاسخ دقیق و مطمئنی " +
+      "در پایگاه دانش آفلاین ندارم.\n\n" +
       "لطفاً نام محصول، نشانه یا موضوع را دقیق‌تر بنویس؛ " +
       "مثلاً «گندم، زمان آبیاری» یا «گوجه، برگ زرد».\n\n" +
       "ℹ️ من ترجیح می‌دهم وقتی اطلاعات کافی ندارم، " +
@@ -221,11 +273,14 @@ function findOfflineAnswer(question = "") {
 }
 
 export default findOfflineAnswer;
-export { findOfflineAnswer };
+
+export {
+  findOfflineAnswer
+};
 
 if (typeof window !== "undefined") {
   window.YarKeshavarzOffline = {
     findOfflineAnswer,
     searchKnowledge
   };
-                     }
+      }
