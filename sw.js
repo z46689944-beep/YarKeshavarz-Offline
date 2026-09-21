@@ -1,45 +1,35 @@
-const CACHE='yar-keshavarz-offline-crop-v2';
+const CACHE='yar-keshavarz-shell-v15';
 const CORE=[
-  './','./index.html','./sw.js','./manifest.webmanifest',
-  './icon-192.png','./icon-512.png','./logo.png','./wheat-hero.jpg',
-  './offline/offline-ai.js?v=20260921-crop-v2',
-  './offline/crop-profiles.js?v=20260921-crop-v2',
-  './offline/agriculture-db-extended.js?v=20260921-crop-v2',
-  './offline/global-agriculture-brain.js?v=20260921-crop-v2',
-  './offline/intent-engine.js?v=20260921-crop-v2',
-  './offline/context-engine.js?v=20260921-crop-v2'
+  './','./index.html','./offline/offline-ai.js','./offline/agriculture-db.js',
+  './offline/agriculture-db-extended.js','./offline/calculators.js',
+  './offline/context-engine.js','./offline/crop-profiles-universal.js',
+  './offline/crop-profiles.js','./offline/crop-ui.js',
+  './offline/global-agriculture-brain.js',
+  './offline/global-crop-registry.js','./offline/intent-engine.js',
+  './offline/specialized-crop-profiles.js','./offline/universal-crop-engine.js',
+  './manifest.webmanifest','./icon-192.png','./icon-512.png','./logo.png',
+  './wheat-hero.jpg','./admin.html','./admin.js','./admin.css',
+  './knowledge/knowledge.json','./presence.js',
+  './offline/crop-ui.js?v=20260921-accordion-v1'
 ];
-
 self.addEventListener('install',e=>{
-  e.waitUntil(
-    caches.open(CACHE)
-      .then(c=>c.addAll(CORE).catch(()=>{}))
-      .then(()=>self.skipWaiting())
-  );
+  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE).catch(()=>{})).then(()=>self.skipWaiting()))
 });
-
 self.addEventListener('activate',e=>{
-  e.waitUntil(
-    caches.keys()
-      .then(keys=>Promise.all(
-        keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))
-      ))
-      .then(()=>self.clients.claim())
-  );
+  e.waitUntil(caches.keys().then(keys=>Promise.all(
+    keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))
+  )).then(()=>self.clients.claim()))
 });
-
 self.addEventListener('fetch',e=>{
-  if(e.request.method!=='GET')return;
-  const u=new URL(e.request.url);
+  const r=e.request;
+  if(r.method!=='GET')return;
+  const u=new URL(r.url);
   if(u.origin!==location.origin)return;
-
   e.respondWith(
-    fetch(e.request)
-      .then(r=>{
-        const c=r.clone();
-        caches.open(CACHE).then(x=>x.put(e.request,c));
-        return r;
-      })
-      .catch(()=>caches.match(e.request).then(x=>x||caches.match('./index.html')))
+    caches.match(r).then(hit=>hit||fetch(r).then(res=>{
+      const copy=res.clone();
+      caches.open(CACHE).then(c=>c.put(r,copy));
+      return res;
+    }).catch(()=>caches.match('./index.html')))
   );
 });
