@@ -1,4 +1,4 @@
-const CACHE = 'yar-keshavarz-offline-v3';
+const CACHE = 'yar-keshavarz-offline-v4';
 
 const CORE = [
   './',
@@ -9,8 +9,8 @@ const CORE = [
   './icon-512.png',
   './logo.png',
   './wheat-hero.jpg',
-  './offline/offline-ai.js',
-  './offline/agriculture-db-extended.js'
+  './offline/offline-ai.js?v=20260919-v4',
+  './offline/agriculture-db-extended.js?v=20260919-v4'
 ];
 
 self.addEventListener('install', event => {
