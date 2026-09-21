@@ -5,6 +5,23 @@ function exact(text,term){const a=normalize(text).split(" ").filter(Boolean),b=n
 const intentMap={definition:["چیست","چیه","تعریف","معنی","یعنی"],irrigation:["آبیاری","آبدهی","کم آبی","تنش خشکی"],fertilizer:["کود","کوددهی","تغذیه","اوره","ازت","نیتروژن","فسفر","پتاس"],soil:["خاک","پی اچ","ph","ec خاک","شوری خاک","زهکشی","ماده آلی","بافت خاک"],pest:["آفت","شته","کنه","سفیدبالک","تریپس","کرم"],disease:["بیماری","قارچ","باکتری","ویروس","پوسیدگی","لکه","سفیدک","زنگ"],weed:["علف هرز","علفکش","هرز"],planting:["کاشت","بذر","نشا","تراکم","فاصله کاشت","تاریخ کاشت"],harvest:["برداشت","رسیدگی","بلوغ","خشک کردن","انبار","سردخانه"],greenhouse:["گلخانه","هیدروپونیک","کوکوپیت","پرلیت","تهویه"],economics:["هزینه","درآمد","سود","قیمت","اقتصاد","سرمایه","نقطه سربه سر"],machinery:["تراکتور","سمپاش","کمباین","دروگر","نازل"],livestock:["دام","گاو","گوسفند","بز","مرغ","طیور","جیره"],beekeeping:["زنبور","کندو","ملکه","عسل"],climate:["هوا","دما","یخبندان","گرما","سرما","بارندگی","رطوبت","خشکسالی"],precision:["کشاورزی دقیق","gps","پهپاد","ماهواره","نقشه","سنجش از دور"],management:["مزرعه","زمین","قطعه","برنامه کشت","ثبت عملیات","موجودی"]};
 export function detectIntent(text=""){const q=normalize(text);let best={id:"general",score:0};for(const [id,words] of Object.entries(intentMap)){const s=words.reduce((n,w)=>n+(exact(q,w)?2:0),0);if(s>best.score)best={id,score:s};}return best;}
 export function detectCrop(text=""){const q=normalize(text);let best=null;for(const c of brain.crops?Object.values(brain.crops).flat():[]){if(exact(q,c))best={crop:c,matched:c,score:12};}for(const [alias,crop] of Object.entries(brain.aliases||{})){if(exact(q,alias)&&(!best||best.score<12))best={crop,matched:alias,score:10};}return best;}
-export function hasExplicitCropLikeText(text=""){const q=normalize(text);return /(کاشت|کشت|پرورش|آبیاری|کوددهی|بیماری|آفت|قیمت|هزینه|برای)\s+\S+/.test(q) || !!detectCrop(q);}
+
+const GENERIC_AFTER_ACTION=new Set(["چه","چی","چیه","چگونه","چطور","پیشنهاد","پیشنهادی","مناسب","خوب","بهتر","بهترین","محصول","محصولی","گیاه","گیاهی","دارم","داری","دارد","داریم","دارید","دارند"]);
+
+export function hasExplicitCropLikeText(text=""){
+  const q=normalize(text);
+  if(detectCrop(q)) return true;
+
+  const tokens=q.split(" ").filter(Boolean);
+  const actions=new Set(["کاشت","کشت","پرورش","آبیاری","کوددهی","بیماری","آفت","قیمت","هزینه"]);
+
+  for(let i=0;i<tokens.length-1;i++){
+    if(!actions.has(tokens[i])) continue;
+    const candidate=tokens[i+1];
+    if(!GENERIC_AFTER_ACTION.has(candidate)) return true;
+  }
+  return false;
+}
+
 export function extractEntities(text=""){return {crop:detectCrop(text),intent:detectIntent(text),explicitCropLike:hasExplicitCropLikeText(text)};}
 export default {detectIntent,detectCrop,extractEntities};
