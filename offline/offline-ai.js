@@ -6,6 +6,25 @@ import {remember,contextHint} from "./context-engine.js";
 
 const KNOWLEDGE_KEY="yk-admin-knowledge-v1";
 
+const SMALL_TALK = [
+  "ممنون","مرسی","متشکرم","سپاس","سپاسگزارم","خیلی ممنون",
+  "دمت گرم","دستت درد نکنه","خسته نباشی","عالی بود","ممنونم"
+];
+
+function isSmallTalk(q=""){
+  const n=normalize(q);
+  return SMALL_TALK.some(x=>n===normalize(x) || n.startsWith(normalize(x)+" "));
+}
+
+function smallTalkAnswer(q=""){
+  const n=normalize(q);
+  if(n.includes("ممنون") || n.includes("مرسی") || n.includes("متشکرم") || n.includes("سپاس"))
+    return "خواهش می‌کنم داداش 🌱❤️ هر سؤال کشاورزی داشتی بپرس.";
+  if(n.includes("عالی") || n.includes("دمت گرم"))
+    return "قربانت داداش 🌱❤️ خوشحالم که به کارت اومد.";
+  return "خواهش می‌کنم داداش 🌱🌾";
+}
+
 function normalize(t=""){
   return String(t).toLowerCase()
     .replace(/[يى]/g,"ی")
@@ -195,6 +214,8 @@ export function findCropProfileAnswer(question,entities){
 
 export function findOfflineAnswer(question=""){
   const q=normalize(question);
+  if(!q)return "🌱 سؤال کشاورزی‌ات را بنوی.";
+  if(isSmallTalk(q)) return smallTalkAnswer(q);
   if(!q)return "🌱 سؤال کشاورزی‌ات را بنویس.";
 
   const entities=extractEntities(q);
