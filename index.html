@@ -1464,7 +1464,7 @@ function yarImageIntent(q){const x=String(q||'').trim();return /^(?:یک|یه|ی
 async function yarSearchImages(){return []}
   async function yarOfflineAnswer(question, id=null){
   try{
-    const mod = await import('./offline/offline-ai.js?v=20260921-crop-v2');
+    const mod = await import('./offline/offline-ai.js?v=20260921-crop-v3');
     return mod.findOfflineAnswer(question, yarAiContext(id));
   }catch(e){
     return '🌱 پاسخ آفلاین در دسترس نیست. فایل‌های پوشه offline را بررسی کنید.';
