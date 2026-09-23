@@ -1330,7 +1330,47 @@ function initMap(){points=[];if(selected&&measureReturn==='land'){let ll=state.l
 function offlineMeasureClick(e){const svg=document.getElementById('offlineMeasureSvg'),r=svg.getBoundingClientRect(),x=Math.max(0,Math.min(360,(e.clientX-r.left)/r.width*360)),y=Math.max(0,Math.min(520,(e.clientY-r.top)/r.height*520));addPoint(35.7+(260-y)*.00001,51.4+(x-180)*.00001)}
 function coordToXY(p){if(!points.length)return[180,260];const xs=points.map(q=>q[1]),ys=points.map(q=>q[0]),minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys),pad=55,w=Math.max(maxX-minX,1e-9),h=Math.max(maxY-minY,1e-9);return[pad+(p[1]-minX)/w*(360-pad*2),pad+(maxY-p[0])/h*(520-pad*2)]}
 function redraw(){const svg=document.getElementById('offlineMeasureSvg');if(!svg)return;svg.querySelectorAll('.dyn').forEach(x=>x.remove());if(points.length){const xy=points.map(coordToXY),poly=xy.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');svg.insertAdjacentHTML('beforeend',`<polygon class="dyn" points="${poly}" fill="#17664b" fill-opacity=".18" stroke="#17664b" stroke-width="3"/>`);xy.forEach((p,i)=>svg.insertAdjacentHTML('beforeend',`<circle class="dyn" cx="${p[0]}" cy="${p[1]}" r="7" fill="#fff" stroke="#17664b" stroke-width="3"/><text class="dyn" x="${p[0]+9}" y="${p[1]-9}" fill="#17664b" font-size="11" font-weight="800">${i+1}</text>`))}updateMeasure()}
-function updateMeasure(){const a=areaM(points);const p=perimeter(points);const A=document.getElementById('ma');const H=document.getElementById('mh');const P=document.getElementById('mp');const N=document.getElementById('mn');const R=document.getElementById('register');const S=document.getElementById('measureStatus');if(A)A.textContent=Math.round(a).toLocaleString('fa-IR');if(H)H.textContent=(a/10000).toFixed(4);if(P)P.textContent=Math.round(p).toLocaleString('fa-IR');if(N)N.textContent=String(points.length);if(R)R.disabled=points.length<3;if(S)S.textContent=points.length<3?'حداقل ۳ نقطه لازم است.':'آماده ثبت — '+points.length+' نقطه'}
+function updateMeasure(){
+  const A=document.getElementById('ma');
+  const H=document.getElementById('mh');
+  const P=document.getElementById('mp');
+  const N=document.getElementById('mn');
+  const R=document.getElementById('register');
+  const S=document.getElementById('measureStatus');
+
+  const count=Array.isArray(points)?points.length:0;
+
+  if(N)N.textContent=String(count);
+
+  if(R)R.disabled=count<3;
+
+  if(S){
+    S.textContent=count<3
+      ?'حداقل ۳ نقطه لازم است.'
+      :'آماده ثبت — '+count+' نقطه';
+  }
+
+  if(count===0){
+    if(A)A.textContent='۰';
+    if(H)H.textContent='۰.۰۰۰۰';
+    if(P)P.textContent='۰';
+    return;
+  }
+
+  let a=0;
+  let p=0;
+
+  try{
+    a=Number(areaM(points))||0;
+    p=Number(perimeter(points))||0;
+  }catch(e){
+    console.error('measurement error',e);
+  }
+
+  if(A)A.textContent=Math.round(a).toLocaleString('fa-IR');
+  if(H)H.textContent=(a/10000).toFixed(4);
+  if(P)P.textContent=Math.round(p).toLocaleString('fa-IR');
+                     }
 function addPoint(lat,lng){points.push([lat,lng]);redraw()}function undo(){points.pop();redraw()}function clearMeasure(){points=[];redraw()}function locate(){if(!navigator.geolocation)return toast('GPS در دسترس نیست');navigator.geolocation.getCurrentPosition(p=>{addPoint(p.coords.latitude,p.coords.longitude);toast('موقعیت GPS اضافه شد')},()=>toast('دریافت موقعیت GPS ناموفق بود'),{enableHighAccuracy:true,timeout:15000,maximumAge:1000})}function toggleGPS(){if(watch!==null){stopGPS();return}if(!navigator.geolocation)return toast('GPS در دسترس نیست');watch=navigator.geolocation.watchPosition(p=>addPoint(p.coords.latitude,p.coords.longitude),()=>{stopGPS();toast('سیگنال GPS دریافت نشد')},{enableHighAccuracy:true,maximumAge:1000,timeout:15000});let b=document.getElementById('gpsBtn');if(b)b.textContent='■ توقف GPS'}function stopGPS(){if(watch!==null){navigator.geolocation.clearWatch(watch);watch=null}let b=document.getElementById('gpsBtn');if(b)b.textContent='▶ ثبت با GPS'}function closeMeasure(){stopGPS();let r=measureReturn||'home';measureReturn=null;go(r)}function resetMapBearing(){toast('نسخه آفلاین قطب‌نما ندارد.')}function toggleSat(){toast('تصویر ماهواره‌ای آفلاین در دسترس نیست.')}function searchPlace(){toast('جستجوی مکان در نسخه آفلاین خاموش است.')}
 function registerMeasured(){
   if(points.length<3){toast('حداقل ۳ نقطه لازم است');return}
