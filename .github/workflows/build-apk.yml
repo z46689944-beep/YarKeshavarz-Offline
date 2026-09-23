@@ -13,7 +13,7 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Setup Java
+      - name: Setup Java 17
         uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -28,6 +28,7 @@ jobs:
         shell: bash
         run: |
           set -e
+
           mkdir -p android/app/src/main/java/ir/yarkeshavarz/offline
           mkdir -p android/app/src/main/res/values
           mkdir -p android/app/src/main/assets/app
@@ -45,6 +46,7 @@ jobs:
                   gradlePluginPortal()
               }
           }
+
           dependencyResolutionManagement {
               repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
               repositories {
@@ -52,6 +54,7 @@ jobs:
                   mavenCentral()
               }
           }
+
           rootProject.name = "YarKeshavarzAndroid"
           include(":app")
           EOF
@@ -86,14 +89,15 @@ jobs:
                   versionCode = 1
                   versionName = "1.0-offline"
               }
-              compileOptions {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
-}
 
-kotlinOptions {
-    jvmTarget = "17"
-}
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
           }
 
           dependencies {
@@ -116,23 +120,26 @@ kotlinOptions {
           cat > android/app/src/main/AndroidManifest.xml <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-              <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+
+              <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+              <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
               <application
                   android:theme="@style/AppTheme"
                   android:label="یار کشاورز"
-                  android:usesCleartextTraffic="false"
                   android:allowBackup="true"
                   android:supportsRtl="true">
+
                   <activity
                       android:name=".MainActivity"
                       android:screenOrientation="portrait"
                       android:exported="true">
+
                       <intent-filter>
-                          <action android:name="android.intent.action.MAIN"/>
-                          <category android:name="android.intent.category.LAUNCHER"/>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
                       </intent-filter>
+
                   </activity>
               </application>
           </manifest>
@@ -152,6 +159,7 @@ kotlinOptions {
           import androidx.core.content.ContextCompat
 
           class MainActivity : Activity() {
+
               private lateinit var webView: WebView
               private val locationRequest = 1001
 
@@ -169,13 +177,21 @@ kotlinOptions {
                       allowContentAccess = true
                       cacheMode = WebSettings.LOAD_NO_CACHE
                   }
+
                   webView.webViewClient = WebViewClient()
 
                   webView.loadUrl("file:///android_asset/app/index.html")
 
-                  if (ContextCompat.checkSelfPermission(
-                          this, Manifest.permission.ACCESS_FINE_LOCATION
-                      ) != PackageManager.PERMISSION_GRANTED) {
+                  requestLocationPermission()
+              }
+
+              private fun requestLocationPermission() {
+                  if (
+                      ContextCompat.checkSelfPermission(
+                          this,
+                          Manifest.permission.ACCESS_FINE_LOCATION
+                      ) != PackageManager.PERMISSION_GRANTED
+                  ) {
                       ActivityCompat.requestPermissions(
                           this,
                           arrayOf(
@@ -189,7 +205,7 @@ kotlinOptions {
           }
           EOF
 
-      - name: Build debug APK
+      - name: Build APK
         working-directory: android
         run: gradle :app:assembleDebug --stacktrace
 
