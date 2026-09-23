@@ -1285,6 +1285,41 @@ function weather(){head('آب‌وهوا');let l=state.lands.find(x=>x.lat!=null
 function loadGeneralWeather(){head('آب‌وهوا');let d=offlineWeather('حالت آفلاین'),c=d.current;app.innerHTML=`<div class="weather-now"><div class="row"><div><div class="small">حالت آفلاین</div><div class="weather-temp">${Math.round(c.temperature_2m)}°</div><div class="small">${WX[c.weather_code]||'🌤️'} · احساس ${Math.round(c.apparent_temperature)}° · رطوبت ${c.relative_humidity_2m}%</div></div><div class="weather-icon">${WX[c.weather_code]||'🌤️'}</div></div><div class="small" style="margin-top:8px">داده نمونه محلی؛ برای پیش‌بینی زنده از نسخه آنلاین استفاده کن.</div></div><div class="section"><h3>⏱️ پیش‌بینی ساعتی آفلاین</h3></div>${hourlyHtml(d,12,false)}<div class="section"><h3>📅 پیش‌بینی ۷ روزه آفلاین</h3></div><div class="forecast">${d.daily.time.map((day,i)=>`<div class="day"><b>${new Date(day).toLocaleDateString('fa-IR',{weekday:'long',month:'numeric',day:'numeric'})}</b><span>${WX[d.daily.weather_code[i]]||'🌤️'}</span><span>${Math.round(d.daily.temperature_2m_min[i])}° / ${Math.round(d.daily.temperature_2m_max[i])}°</span><span>${d.daily.precipitation_probability_max[i]}%</span></div>`).join('')}</div>`}
 function weatherFor(id){let l=state.lands.find(x=>x.id===id);if(!l)return;if(l.lat==null||l.lng==null){head('آب‌وهوای زمین');app.innerHTML=`<div class="card empty"><div style="font-size:45px">📍</div><b>موقعیت این زمین ثبت نشده است.</b><p class="small muted">در نسخه آفلاین می‌توانی اطلاعات زمین را محلی ثبت کنی.</p><button class="primary" onclick="go('measure')">اندازه‌گیری آفلاین</button></div>`;return}loadWeather(l)}
 function loadWeather(l){head('آب‌وهوای '+l.name);let d=offlineWeather(l.name),c=d.current;app.innerHTML=`<div class="weather-now"><div class="row"><div><div class="small">${esc(l.name)}</div><div class="weather-temp">${Math.round(c.temperature_2m)}°</div><div class="small">${WX[c.weather_code]||'🌤️'} · احساس ${Math.round(c.apparent_temperature)}° · رطوبت ${c.relative_humidity_2m}%</div></div><div class="weather-icon">${WX[c.weather_code]||'🌤️'}</div></div><div class="small" style="margin-top:8px">بارش ۰ mm · باد ${Math.round(c.wind_speed_10m)} km/h</div></div><div class="section"><h3>⏱️ پیش‌بینی ساعتی آفلاین</h3></div>${hourlyHtml(d,12,false)}<div class="section"><h3>📅 پیش‌بینی ۷ روزه آفلاین</h3></div><div class="forecast">${d.daily.time.map((day,i)=>`<div class="day"><b>${new Date(day).toLocaleDateString('fa-IR',{weekday:'long',month:'numeric',day:'numeric'})}</b><span>${WX[d.daily.weather_code[i]]||'🌤️'}</span><span>${Math.round(d.daily.temperature_2m_min[i])}° / ${Math.round(d.daily.temperature_2m_max[i])}°</span><span>${d.daily.precipitation_probability_max[i]}%</span></div>`).join('')}</div><p class="small muted" style="text-align:center">داده نمونه محلی — بدون اینترنت.</p>`}
+  function geoDistance(a,b){
+  const R=6371008.8;
+  const toRad=v=>v*Math.PI/180;
+  const lat1=toRad(Number(a[0])),lat2=toRad(Number(b[0]));
+  const dLat=lat2-lat1,dLon=toRad(Number(b[1])-Number(a[1]));
+  const s1=Math.sin(dLat/2),s2=Math.sin(dLon/2);
+  const h=s1*s1+Math.cos(lat1)*Math.cos(lat2)*s2*s2;
+  return 2*R*Math.asin(Math.min(1,Math.sqrt(h)));
+}
+
+function perimeter(ps){
+  if(!Array.isArray(ps)||ps.length<2)return 0;
+  let total=0;
+  for(let i=0;i<ps.length;i++){
+    total+=geoDistance(ps[i],ps[(i+1)%ps.length]);
+  }
+  return total;
+}
+
+function areaM(ps){
+  if(!Array.isArray(ps)||ps.length<3)return 0;
+  const lat0=ps.reduce((s,p)=>s+Number(p[0]),0)/ps.length;
+  const R=6371008.8;
+  const toRad=v=>v*Math.PI/180;
+  const pts=ps.map(p=>[
+    R*toRad(Number(p[1]))*Math.cos(toRad(lat0)),
+    R*toRad(Number(p[0]))
+  ]);
+  let sum=0;
+  for(let i=0;i<pts.length;i++){
+    const a=pts[i],b=pts[(i+1)%pts.length];
+    sum+=a[0]*b[1]-b[0]*a[1];
+  }
+  return Math.abs(sum)/2;
+  }
 function measure(landId){if(landId)selected=landId;if(!measureReturn)measureReturn=landId?'land':'add';head('اندازه‌گیری آفلاین');app.innerHTML=`<div class="measure-wrap"><div id="measureMap" class="measure-map" style="background:linear-gradient(145deg,#edf7f0,#dcefe3);display:flex;align-items:center;justify-content:center;overflow:hidden"><svg id="offlineMeasureSvg" viewBox="0 0 360 520" width="100%" height="100%" style="touch-action:none"><defs><pattern id="offlineGrid" width="30" height="30" patternUnits="userSpaceOnUse"><path d="M30 0H0V30" fill="none" stroke="#cfe3d8" stroke-width="1"/></pattern></defs><rect width="360" height="520" fill="url(#offlineGrid)"/><text x="180" y="35" text-anchor="middle" fill="#17664b" font-size="15" font-weight="800">📐 اندازه‌گیری آفلاین</text><text x="180" y="57" text-anchor="middle" fill="#60756a" font-size="10">با لمس صفحه نقاط زمین را مشخص کن</text></svg></div><div class="measure-tools"><button onclick="locate()">⌖</button><button onclick="toggleSat()">🛰️</button><button onclick="undo()">↶</button><button onclick="clearMeasure()">↺</button><button onclick="closeMeasure()">×</button></div><div class="measure-bottom"><div class="measure-stats"><div><span>مساحت</span><b id="ma">۰</b></div><div><span>هکتار</span><b id="mh">۰</b></div><div><span>محیط</span><b id="mp">۰</b></div><div><span>نقاط</span><b id="mn">۰</b></div></div><div class="measure-actions"><button class="gps" id="gpsBtn" onclick="toggleGPS()">▶ ثبت با GPS</button><button class="primary" id="register" disabled onclick="registerMeasured()">📐 ثبت زمین</button></div><div id="measureStatus" class="hint">حداقل ۳ نقطه لازم است.</div></div></div>`;setTimeout(initMap,20)}
 function initMap(){points=[];if(selected&&measureReturn==='land'){let ll=state.lands.find(x=>x.id===selected);if(ll&&ll.measurement&&Array.isArray(ll.measurement.points))points=ll.measurement.points.map(x=>[+x[0],+x[1]])}const svg=document.getElementById('offlineMeasureSvg');if(!svg)return;svg.addEventListener('click',offlineMeasureClick);redraw()}
 function offlineMeasureClick(e){const svg=document.getElementById('offlineMeasureSvg'),r=svg.getBoundingClientRect(),x=Math.max(0,Math.min(360,(e.clientX-r.left)/r.width*360)),y=Math.max(0,Math.min(520,(e.clientY-r.top)/r.height*520));addPoint(35.7+(260-y)*.00001,51.4+(x-180)*.00001)}
