@@ -1,6 +1,6 @@
-const CACHE='yar-keshavarz-shell-v17';
+const CACHE='yar-keshavarz-shell-v16';
 const CORE=[
-  './','./index.html','./offline/offline-ai.js','./offline/agriculture-db.js',
+  './','./index.html','./offline/offline-ai.js','./offline/offline-ai.js?v=20260924-restored','./offline/agriculture-db.js',
   './offline/agriculture-db-extended.js','./offline/calculators.js',
   './offline/context-engine.js','./offline/crop-profiles-universal.js',
   './offline/crop-profiles.js','./offline/crop-ui.js',
@@ -9,7 +9,7 @@ const CORE=[
   './offline/specialized-crop-profiles.js','./offline/universal-crop-engine.js',
   './manifest.webmanifest','./icon-192.png','./icon-512.png','./logo.png',
   './wheat-hero.jpg','./admin.html','./admin.js','./admin.css',
-  './knowledge/knowledge.json',
+  './knowledge/knowledge.json','./presence.js',
   './offline/crop-ui.js?v=20260921-accordion-v1'
 ];
 self.addEventListener('install',e=>{
