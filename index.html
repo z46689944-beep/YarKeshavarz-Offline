@@ -770,14 +770,6 @@ hr{border:0!important;border-top:1px solid var(--line)!important}
 .manager-actions button{flex:1}
 @media(max-width:420px){.manager-wrap{padding-left:7px;padding-right:7px}.manager-chat{min-height:290px}.manager-bubble{max-width:88%}}
 </style>
-
-<style id="yk-leaflet-fix">
-#measureMap .leaflet-container{width:100%;height:100%;background:#e8f1eb;font-family:Tahoma,Arial,sans-serif}
-#measureMap .leaflet-control-attribution{font-size:8px}
-.yk-map-loading{position:absolute;z-index:5200;top:82px;left:50%;transform:translateX(-50%);background:#fff;padding:9px 13px;border-radius:12px;box-shadow:0 6px 18px #0002;font-size:11px;color:#17664b}
-.yk-offline-map{position:absolute;inset:0;background:linear-gradient(145deg,#edf7f0,#dcefe3);display:flex;align-items:center;justify-content:center;overflow:hidden}
-.yk-offline-map svg{width:100%;height:100%;touch-action:none}
-</style>
 </head>
 <body>
 <header class="top"><div class="brand"><div class="logo">🌾</div><div><b>یار کشاورز</b><small id="pageTitle">خانه · آفلاین</small></div></div><button id="backup">↥</button></header>
@@ -805,6 +797,15 @@ function funQuestion(){const q=FUN_DATA[funType][funIndex%FUN_DATA[funType].leng
 function funAnswer(i,a){if(funAnswered)return;funAnswered=true;document.querySelectorAll('#funPanel .fun-option').forEach((x,n)=>{if(n===a)x.classList.add('correct');if(n===i&&i!==a)x.classList.add('wrong')});if(i===a){funState.score+=10;funState.streak++;funState.high=Math.max(funState.high,funState.score)}else funState.streak=0;funState.played++;funSave();funRenderScore();const b=document.createElement('button');b.className='fun-btn';b.textContent='سؤال بعدی ➜';b.onclick=()=>{funIndex++;funQuestion()};funPanel.appendChild(b)}
 function funFact(){funHome.style.display='none';funPanel.style.display='block';funPanel.innerHTML='<div class="row"><b>😂 دانستنی جالب</b><button class="fun-back" onclick="funHome()">بازگشت</button></div><div class="fun-fact" style="margin-top:18px">'+FUN_FACTS[Math.floor(Math.random()*FUN_FACTS.length)]+'</div><button class="fun-btn" onclick="funFact()">یکی دیگر</button>'}
 </script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous">
+<style>
+#measureMap.yk-leaflet-map{background:#dcefe3;z-index:1}
+#measureMap.yk-leaflet-map .leaflet-control{font-family:Tahoma,Arial,sans-serif}
+.yk-map-mode{position:absolute;z-index:5200;top:12px;left:12px;display:flex;gap:6px}
+.yk-map-mode button{border:0;border-radius:12px;background:#fff;color:#17352b;padding:10px 12px;font-weight:900;box-shadow:0 6px 18px #0002}
+.yk-map-mode button.active{background:#0b3d2e;color:#fff}
+</style>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
 <script>
 function divj(a,b){return Math.floor(a/b)}
 function toJalali(gy,gm,gd){
@@ -851,18 +852,7 @@ const base={lands:[],inventory:[],transactions:[],equipment:[],profile:{name:'',
   const HERO_IMG='wheat-hero.jpg';
 let state=load(),route='home',selected=null,map=null,points=[],markers=[],polygon=null,watch=null,satellite=false,measureReturn=null;
 function openSelectedTool(r){let id=selected||localStorage.getItem('yk-last-land');if(id&&state.lands.some(x=>x.id===id)){selected=id;go(r)}else{toast('برای استفاده از این بخش، ابتدا یک زمین را باز کن');go('lands')}}
-function load(){
-  try{
-    const raw=localStorage.getItem(KEY);
-    let saved=raw?JSON.parse(raw):null;
-    if(!saved){
-      for(const k of ['yk-v3-clean','yk-yar-keshavarz','yk-yar-keshavarz-v3']){try{const old=JSON.parse(localStorage.getItem(k)||'null');if(old&&Array.isArray(old.lands)){saved=old;break}}catch(_){}}
-    }
-    let x={...base,...(saved||{})};x.lands=Array.isArray(x.lands)?x.lands:[];x.inventory=Array.isArray(x.inventory)?x.inventory:[];x.transactions=Array.isArray(x.transactions)?x.transactions:[];x.equipment=Array.isArray(x.equipment)?x.equipment:[];x.profile={...base.profile,...(x.profile||{})};
-    x.lands=x.lands.map(l=>{const a=n(l.area);const a2=n(l.areaM2)||n(l.measurement?.area);return {...l,area:a>0?a:(a2>0?a2/10000:0),areaM2:a2||undefined}});
-    return x;
-  }catch{return JSON.parse(JSON.stringify(base))}
-}
+function load(){try{let x={...base,...JSON.parse(localStorage.getItem(KEY)||'{}')};x.lands=x.lands||[];x.inventory=x.inventory||[];x.transactions=x.transactions||[];x.equipment=x.equipment||[];x.profile={...base.profile,...(x.profile||{})};return x}catch{return JSON.parse(JSON.stringify(base))}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(state));return true}catch(e){console.error(e);toast('ذخیره‌سازی انجام نشد؛ حافظه مرورگر پر است.');return false}}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function n(v){return Number(String(v??'').replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٬,\s]/g,''))||0}
@@ -1251,19 +1241,37 @@ function settingsApply(save=true){
 }
 function settingsClearYar(){
   if(!confirm('گفت‌وگوی کشاورزیار پاک شود؟')) return;
+
   try{
     localStorage.removeItem(YAR_CHAT_KEY);
     localStorage.removeItem('yk-yar-chat-v4');
     localStorage.removeItem('yk-yar-chat-v3');
-    localStorage.removeItem('yk-yar-chat-v2');
-    if(typeof yarMessages !== 'undefined') yarMessages.length=0;
-    if(typeof yarPhotoData !== 'undefined') yarPhotoData=null;
-    if(typeof yarPhotoName !== 'undefined') yarPhotoName='';
-    if(typeof yarRender === 'function') yarRender();
+    localStorage.removeItem('yk-yar-offline-chat-v1');
+
+    if(typeof yarMessages !== 'undefined'){
+      yarMessages.length = 0;
+    }
+
+    if(typeof yarPhotoData !== 'undefined'){
+      yarPhotoData = null;
+    }
+
+    if(typeof yarPhotoName !== 'undefined'){
+      yarPhotoName = '';
+    }
+
+    if(typeof yarRender === 'function'){
+      yarRender();
+    }
+
     toast('گفت‌وگوی کشاورزیار پاک شد');
     settings();
-  }catch(e){ console.error(e); toast('پاک کردن گفتگو انجام نشد'); }
-}
+
+  }catch(e){
+    console.error(e);
+    toast('پاک کردن گفتگو انجام نشد');
+  }
+  }
 function settingsClearManager(){
   if(confirm('گفت‌وگوی مدیر پاک شود؟')){
     try{localStorage.removeItem(MANAGER_CHAT_KEY)}catch(e){}
@@ -1274,25 +1282,24 @@ function account(){head('اکانت');app.innerHTML=`<div class="card"><h2>👤 
 function news(){head('اخبار');let items=[{icon:'🌾',cat:'کشت',title:'مدیریت مرحله‌ای کشت؛ از آماده‌سازی تا برداشت',text:'ثبت عملیات و مشاهده وضعیت زمین کمک می‌کند تصمیم‌های مزرعه بر اساس سابقه واقعی گرفته شوند.',date:'امروز'},{icon:'🌦️',cat:'هوا',title:'هشدارهای آب‌وهوایی را جدی بگیرید',text:'پیش از آبیاری، سم‌پاشی یا عملیات حساس، شرایط جوی و پیش‌بینی روزهای آینده را بررسی کنید.',date:'امروز'},{icon:'💧',cat:'آبیاری',title:'آبیاری دقیق‌تر با ثبت مصرف آب',text:'ثبت زمان و مقدار آبیاری برای مقایسه عملکرد زمین و مدیریت بهتر منابع مفید است.',date:'این هفته'},{icon:'📦',cat:'بازار',title:'مدیریت موجودی انبار از هزینه‌های اضافی جلوگیری می‌کند',text:'ورودی و مصرف نهاده‌ها را جداگانه ثبت کن تا موجودی واقعی همیشه مشخص باشد.',date:'این هفته'}];app.innerHTML=`<div class="news-hero"><h2>📰 اخبار کشاورزی</h2><p>مطالب کاربردی برای تصمیم‌های بهتر در مزرعه.</p></div><div class="filter-row"><button class="active">همه</button><button>🌾 کشت</button><button>🌦️ هوا</button><button>💧 آبیاری</button><button>📈 بازار</button></div><div class="news-grid">${items.map((x,i)=>`<article class="news-item"><div class="news-top"><span style="font-size:29px">${x.icon}</span><span class="badge-news">${x.cat}</span></div><h3>${esc(x.title)}</h3><p>${esc(x.text)}</p><div class="meta-line">${esc(x.date)} · یار کشاورز</div><button class="secondary" style="width:100%;margin-top:11px" onclick="openNewsDetail(${i})">ادامه مطلب ←</button></article>`).join('')}</div>`;window.__ykNews=items}
 function openNewsDetail(i){let x=(window.__ykNews||[])[i];if(!x)return;head('خبر');app.innerHTML=`<article class="card news-detail"><div style="font-size:38px">${x.icon}</div><span class="badge-news">${esc(x.cat)}</span><h2>${esc(x.title)}</h2><div class="meta-line">${esc(x.date)} · یار کشاورز</div><p>${esc(x.text)}</p><p>این بخش در نسخه نهایی می‌تواند به سامانه اخبار آنلاین متصل شود تا اخبار معتبر، هشدارهای کشاورزی و اطلاعات بازار به‌صورت به‌روز در اختیار کشاورز قرار بگیرد.</p><button class="secondary" onclick="go('news')">← بازگشت به اخبار</button></article>`}
 function equipment(){head('ادوات');let list=state.equipment||[];app.innerHTML=`<div class="section"><h2>🚜 ادوات و ماشین‌آلات</h2><button class="primary" onclick="addEquipment()">＋ ثبت وسیله</button></div><div class="equip-grid">${list.map((x,i)=>`<article class="card equip-item"><div class="equip-icon">${esc(x.icon||'🚜')}</div><div><b>${esc(x.name)}</b><div class="equip-meta">نوع: ${esc(x.type||'-')}<br>مدل: ${esc(x.model||'-')} · وضعیت: ${esc(x.status||'فعال')}</div></div><div class="actions" style="margin:0"><button class="secondary" onclick="editEquipment(${i})">✏️</button><button class="danger" onclick="deleteEquipment(${i})">🗑️</button></div></article>`).join('')||'<div class="card empty">هنوز ادواتی ثبت نشده است.</div>'}</div>`}
-function equipmentModal(index){
-  const x=index==null?{name:'',type:'ادوات',model:'',status:'فعال'}:state.equipment[index];
-  if(!x)return;
-  const old=document.getElementById('equipmentModal');if(old)old.remove();
-  document.body.insertAdjacentHTML('beforeend',`<div id="equipmentModal" class="register-modal" style="z-index:7000"><div class="register-modal-head"><div><h3>🚜 ${index==null?'ثبت وسیله':'ویرایش وسیله'}</h3><p class="small muted">مشخصات ادوات را وارد کن.</p></div><button type="button" class="register-x" onclick="document.getElementById('equipmentModal').remove()">×</button></div><div class="form"><div class="field"><label>نام وسیله *</label><input id="eqName" value="${esc(x.name)}" placeholder="مثلاً تراکتور"></div><div class="field"><label>نوع</label><input id="eqType" value="${esc(x.type||'ادوات')}" placeholder="تراکتور، سمپاش، کمباین..."></div><div class="field"><label>مدل</label><input id="eqModel" value="${esc(x.model||'')}" placeholder="مدل یا سال ساخت"></div><div class="field"><label>وضعیت</label><select id="eqStatus"><option ${x.status==='فعال'?'selected':''}>فعال</option><option ${x.status==='نیازمند تعمیر'?'selected':''}>نیازمند تعمیر</option><option ${x.status==='غیرفعال'?'selected':''}>غیرفعال</option></select></div></div><div class="actions register-actions"><button class="secondary" onclick="document.getElementById('equipmentModal').remove()">انصراف</button><button class="primary" onclick="saveEquipmentModal(${index==null?'null':index})">💾 ذخیره</button></div></div>`);
+function addEquipment(){
+  const box=document.createElement('div');box.className='register-modal';box.id='equipmentModal';
+  box.innerHTML=`<div class="register-card"><div class="register-modal-head"><div><h3>🚜 ثبت ادوات</h3><p class="small muted">مشخصات وسیله را وارد کن.</p></div><button type="button" class="register-x" id="eqClose">×</button></div><div class="form"><div class="field"><label>نام وسیله</label><input id="eqName" required placeholder="مثلاً تراکتور ۸۵ اسب"></div><div class="field"><label>نوع</label><select id="eqType"><option>تراکتور</option><option>کمباین</option><option>سمپاش</option><option>دیسک</option><option>گاوآهن</option><option>کودپاش</option><option>دروگر</option><option>ادوات</option></select></div><div class="field"><label>مدل</label><input id="eqModel" placeholder="مدل یا سال ساخت"></div><div class="field"><label>وضعیت</label><select id="eqStatus"><option>فعال</option><option>نیازمند سرویس</option><option>خراب</option><option>اجاره‌ای</option></select></div><button class="primary" type="button" id="eqSave">💾 ذخیره وسیله</button></div></div>`;
+  document.body.appendChild(box);
+  const iconFor=t=>t.includes('تراکت')?'🚜':t.includes('کمباین')?'🌾':t.includes('سمپ')?'🧴':t.includes('دیسک')?'⚙️':t.includes('کود')?'🪣':'🔧';
+  const close=()=>box.remove();document.getElementById('eqClose').onclick=close;
+  document.getElementById('eqSave').onclick=()=>{const name=document.getElementById('eqName').value.trim();if(!name){toast('نام وسیله را وارد کن');return}const type=document.getElementById('eqType').value;state.equipment=Array.isArray(state.equipment)?state.equipment:[];state.equipment.push({id:uid(),name,type,model:document.getElementById('eqModel').value.trim(),status:document.getElementById('eqStatus').value,icon:iconFor(type),createdAt:new Date().toISOString()});if(save()){close();equipment();toast('وسیله با موفقیت اضافه شد 🚜')}};
 }
-function addEquipment(){equipmentModal(null)}
-function editEquipment(i){equipmentModal(i)}
-function saveEquipmentModal(i){
-  const name=(document.getElementById('eqName')?.value||'').trim();if(!name){toast('نام وسیله را وارد کن');return}
-  const type=(document.getElementById('eqType')?.value||'ادوات').trim()||'ادوات';
-  const model=(document.getElementById('eqModel')?.value||'').trim();
-  const status=document.getElementById('eqStatus')?.value||'فعال';
-  const icon=type.includes('تراکت')?'🚜':type.includes('کمباین')?'🌾':type.includes('سمپ')?'🧴':type.includes('درون')||type.includes('پهپاد')?'🛩️':'🔧';
-  const item={id:i==null?uid():(state.equipment[i]?.id||uid()),name,type,model,status,icon};
-  if(i==null)state.equipment.push(item);else state.equipment[i]=item;
-  save();document.getElementById('equipmentModal')?.remove();equipment();toast('ادوات با موفقیت ذخیره شد');
+function editEquipment(i){
+  const x=state.equipment&&state.equipment[i];if(!x)return;
+  const box=document.createElement('div');box.className='register-modal';box.id='equipmentModal';
+  const opts=['تراکتور','کمباین','سمپاش','دیسک','گاوآهن','کودپاش','دروگر','ادوات'].map(v=>`<option ${v===x.type?'selected':''}>${v}</option>`).join('');
+  const sts=['فعال','نیازمند سرویس','خراب','اجاره‌ای'].map(v=>`<option ${v===x.status?'selected':''}>${v}</option>`).join('');
+  box.innerHTML=`<div class="register-card"><div class="register-modal-head"><div><h3>✏️ ویرایش وسیله</h3></div><button type="button" class="register-x" id="eqClose">×</button></div><div class="form"><div class="field"><label>نام وسیله</label><input id="eqName" value="${esc(x.name)}"></div><div class="field"><label>نوع</label><select id="eqType">${opts}</select></div><div class="field"><label>مدل</label><input id="eqModel" value="${esc(x.model||'')}"></div><div class="field"><label>وضعیت</label><select id="eqStatus">${sts}</select></div><button class="primary" type="button" id="eqSave">💾 ذخیره تغییرات</button></div></div>`;
+  document.body.appendChild(box);document.getElementById('eqClose').onclick=()=>box.remove();
+  document.getElementById('eqSave').onclick=()=>{const name=document.getElementById('eqName').value.trim();if(!name){toast('نام وسیله را وارد کن');return}x.name=name;x.type=document.getElementById('eqType').value;x.model=document.getElementById('eqModel').value.trim();x.status=document.getElementById('eqStatus').value;save();box.remove();equipment();toast('تغییرات ذخیره شد')};
 }
-function deleteEquipment(i){if(confirm('این وسیله حذف شود؟')){state.equipment.splice(i,1);save();equipment()}}
+function deleteEquipment(i){if(!state.equipment||!state.equipment[i])return;if(confirm('این وسیله حذف شود؟')){state.equipment.splice(i,1);save();equipment();}}
 const WX={0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',56:'🌧️',57:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',66:'🌧️',67:'🌧️',71:'🌨️',73:'🌨️',75:'❄️',77:'🌨️',80:'🌦️',81:'🌧️',82:'⛈️',85:'🌨️',86:'❄️',95:'⛈️',96:'⛈️',99:'⛈️'};
 function fmtHour(iso){try{return new Date(iso).toLocaleTimeString('fa-IR',{hour:'2-digit',minute:'2-digit'})}catch{return iso.slice(11,16)}}
 function offlineWeather(label){label=label||'حالت آفلاین';const seed=[...String(label)].reduce((a,c)=>a+c.charCodeAt(0),0),now=Date.now(),baseT=18+seed%14,codes=[0,1,2,3,61,2,1],hourly={time:[],weather_code:[],temperature_2m:[],relative_humidity_2m:[],precipitation_probability:[],wind_speed_10m:[]},daily={time:[],weather_code:[],temperature_2m_min:[],temperature_2m_max:[],precipitation_probability_max:[]};for(let i=0;i<24;i++){let d=new Date(now+i*3600000);hourly.time.push(d.toISOString());hourly.weather_code.push(codes[(seed+i)%codes.length]);hourly.temperature_2m.push(baseT+Math.round(Math.sin(i/3)*4));hourly.relative_humidity_2m.push(45+(seed+i*3)%35);hourly.precipitation_probability.push((seed+i*7)%45);hourly.wind_speed_10m.push(7+(seed+i)%13)}for(let i=0;i<7;i++){let d=new Date(now+i*86400000);daily.time.push(d.toISOString());daily.weather_code.push(codes[(seed+i+2)%codes.length]);daily.temperature_2m_min.push(baseT-5+i%3);daily.temperature_2m_max.push(baseT+5+i%4);daily.precipitation_probability_max.push((seed+i*9)%55)}return {current:{temperature_2m:baseT,apparent_temperature:baseT-1,relative_humidity_2m:hourly.relative_humidity_2m[0],wind_speed_10m:hourly.wind_speed_10m[0],precipitation:0,weather_code:hourly.weather_code[0]},hourly,daily}}
@@ -1341,7 +1348,7 @@ function loadWeather(l){head('آب‌وهوای '+l.name);let d=offlineWeather(l
   }
 
   if(A)A.textContent=Math.round(a).toLocaleString('fa-IR');
-  if(H)H.textContent=(a/10000).toFixed(4);
+  if(H)H.textContent=(a>0?(a/10000).toFixed(4):'0.0000');
   if(P)P.textContent=Math.round(p).toLocaleString('fa-IR');
   }
   function geoDistance(a,b){
@@ -1388,68 +1395,136 @@ function areaM(ps){
 
   return Math.abs(sum)/2;
   }
-function loadLeaflet(){
-  return new Promise((resolve,reject)=>{
-    if(window.L){resolve();return}
-    const done=()=>window.L?resolve():reject(new Error('Leaflet unavailable'));
-    if(!document.getElementById('ykLeafletCss')){
-      const c=document.createElement('link');c.id='ykLeafletCss';c.rel='stylesheet';c.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';document.head.appendChild(c);
-    }
-    const sc=document.createElement('script');sc.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';sc.onload=done;sc.onerror=reject;document.head.appendChild(sc);
-  });
-}
 function measure(landId){
-  if(landId)selected=landId;if(!measureReturn)measureReturn=landId?'land':'add';head('اندازه‌گیری زمین');
-  app.innerHTML=`<div class="measure-wrap"><div id="measureMap" class="measure-map"></div><div class="measure-tools"><button onclick="locate()" title="موقعیت من">⌖</button><button id="satBtn" onclick="toggleSat()" title="ماهواره">🛰️</button><button onclick="undo()" title="حذف آخرین نقطه">↶</button><button onclick="clearMeasure()" title="پاک کردن نقاط">↺</button><button onclick="closeMeasure()" title="بستن">×</button></div><div class="measure-bottom"><div class="measure-stats"><div><span>مساحت</span><b id="ma">۰</b></div><div><span>هکتار</span><b id="mh">۰.۰۰۰۰</b></div><div><span>محیط</span><b id="mp">۰</b></div><div><span>نقاط</span><b id="mn">۰</b></div></div><div class="measure-actions"><button class="gps" id="gpsBtn" onclick="toggleGPS()">▶ ثبت با GPS</button><button class="primary" id="register" disabled onclick="registerMeasured()">📐 ثبت زمین</button></div><div id="measureStatus" class="hint">در حالت آنلاین، نقشه و ماهواره فعال می‌شوند؛ در حالت آفلاین اندازه‌گیری همچنان کار می‌کند.</div></div></div>`;
+  if(landId)selected=landId;
+  if(!measureReturn)measureReturn=landId?'land':'add';
+  head('اندازه‌گیری زمین');
+  app.innerHTML=`<div class="measure-wrap">
+    <div id="measureMap" class="measure-map yk-leaflet-map">
+      <div id="offlineFallback" style="position:absolute;inset:0;background:linear-gradient(145deg,#edf7f0,#dcefe3);display:flex;align-items:center;justify-content:center;overflow:hidden">
+        <svg id="offlineMeasureSvg" viewBox="0 0 360 520" width="100%" height="100%" style="touch-action:none">
+          <defs><pattern id="offlineGrid" width="30" height="30" patternUnits="userSpaceOnUse"><path d="M30 0H0V30" fill="none" stroke="#cfe3d8" stroke-width="1"/></pattern></defs>
+          <rect width="360" height="520" fill="url(#offlineGrid)"/>
+          <text x="180" y="35" text-anchor="middle" fill="#17664b" font-size="15" font-weight="800">📐 اندازه‌گیری آفلاین</text>
+          <text x="180" y="57" text-anchor="middle" fill="#60756a" font-size="10">با لمس صفحه نقاط زمین را مشخص کن</text>
+        </svg>
+      </div>
+    </div>
+    <div class="yk-map-mode"><button id="ykStreet" class="active" type="button">🗺️ نقشه</button><button id="ykSatellite" type="button">🛰️ ماهواره</button></div>
+    <div class="measure-tools"><button onclick="locate()" title="GPS">⌖</button><button onclick="undo()" title="حذف نقطه آخر">↶</button><button onclick="clearMeasure()" title="پاک کردن نقاط">↺</button><button onclick="closeMeasure()" title="بستن">×</button></div>
+    <div class="measure-bottom"><div class="measure-stats"><div><span>مساحت</span><b id="ma">۰</b></div><div><span>هکتار</span><b id="mh">۰.۰۰۰۰</b></div><div><span>محیط</span><b id="mp">۰</b></div><div><span>نقاط</span><b id="mn">۰</b></div></div><div class="measure-actions"><button class="gps" id="gpsBtn" onclick="toggleGPS()">▶ ثبت با GPS</button><button class="primary" id="register" disabled onclick="registerMeasured()">📐 ثبت زمین</button></div><div id="measureStatus" class="hint">حداقل ۳ نقطه لازم است. در حالت آنلاین روی نقشه کلیک کن؛ بدون اینترنت صفحه آفلاین فعال می‌شود.</div></div>
+  </div>`;
   setTimeout(initMap,20);
 }
+function measureCenter(){
+  const l=selected&&state.lands.find(x=>x.id===selected);
+  if(l&&Number.isFinite(+l.lat)&&Number.isFinite(+l.lng))return[+l.lat,+l.lng];
+  if(points.length)return[points.reduce((a,p)=>a+p[0],0)/points.length,points.reduce((a,p)=>a+p[1],0)/points.length];
+  return[35.7,51.4];
+}
 function initMap(){
-  points=[];if(selected&&measureReturn==='land'){let ll=state.lands.find(x=>x.id===selected);if(ll?.measurement?.points)points=ll.measurement.points.map(x=>[+x[0],+x[1]]).filter(x=>x.every(Number.isFinite));}
-  const box=document.getElementById('measureMap');if(!box)return;
-  if(navigator.onLine){
-    loadLeaflet().then(()=>initLeafletMap()).catch(()=>initOfflineMap());
-  }else initOfflineMap();
+  points=[];
+  if(selected&&measureReturn==='land'){
+    const ll=state.lands.find(x=>x.id===selected);
+    if(ll&&ll.measurement&&Array.isArray(ll.measurement.points))points=ll.measurement.points.map(x=>[+x[0],+x[1]]).filter(x=>Number.isFinite(x[0])&&Number.isFinite(x[1]));
+  }
+  const mapEl=document.getElementById('measureMap');
+  const svg=document.getElementById('offlineMeasureSvg');
+  const fallback=document.getElementById('offlineFallback');
+  if(window.L&&mapEl){
+    try{
+      map=window.L.map(mapEl,{zoomControl:true,attributionControl:true,doubleClickZoom:false}).setView(measureCenter(),16);
+      const street=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,attribution:'© OpenStreetMap contributors'});
+      const satelliteLayer=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:20,attribution:'Tiles © Esri'});
+      window._ykStreetLayer=street; window._ykSatelliteLayer=satelliteLayer;
+      street.addTo(map);
+      if(fallback)fallback.style.display='none';
+      map.on('click',e=>addPoint(e.latlng.lat,e.latlng.lng));
+      document.getElementById('ykStreet').onclick=()=>setMapLayer('street');
+      document.getElementById('ykSatellite').onclick=()=>setMapLayer('satellite');
+      if(points.length){map.fitBounds(L.latLngBounds(points),{padding:[55,55],maxZoom:19});}
+      redraw();
+      return;
+    }catch(e){console.warn('Leaflet init failed',e);try{if(map)map.remove()}catch(_){} map=null;}
+  }
+  if(mapEl)mapEl.classList.remove('yk-leaflet-map');
+  if(fallback)fallback.style.display='flex';
+  if(svg)svg.addEventListener('click',offlineMeasureClick,{once:false});
+  const streetBtn=document.getElementById('ykStreet'),satBtn=document.getElementById('ykSatellite');
+  if(streetBtn)streetBtn.onclick=()=>toast('حالت نقشه آنلاین در دسترس نیست؛ اندازه‌گیری آفلاین فعال است.');
+  if(satBtn)satBtn.onclick=()=>toast('تصویر ماهواره‌ای بدون اینترنت در دسترس نیست.');
+  redraw();
 }
-let baseLayer=null,satLayer=null,activeMapLayer='street';
-function initLeafletMap(){
-  const box=document.getElementById('measureMap');if(!box||!window.L)return initOfflineMap();
-  map=L.map(box,{zoomControl:true,attributionControl:true});
-  baseLayer=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,attribution:'© OpenStreetMap'}).addTo(map);
-  satLayer=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:20,attribution:'© Esri'});
-  map.on('click',e=>addPoint(e.latlng.lat,e.latlng.lng));
-  if(points.length>=1){map.setView(points[0],17);if(points.length>=2)map.fitBounds(points,{padding:[40,40]});}else map.setView([35.7,51.4],13);
-  redrawLeaflet();
-  const S=document.getElementById('measureStatus');if(S)S.textContent='آنلاین: روی نقشه نقطه بزن؛ برای تصویر ماهواره‌ای دکمه 🛰️ را بزن.';
+function setMapLayer(mode){
+  if(!map||!window.L)return;
+  const street=document.getElementById('ykStreet'),sat=document.getElementById('ykSatellite');
+  try{
+    if(mode==='satellite'){if(map.hasLayer(_ykStreetLayer))map.removeLayer(_ykStreetLayer);_ykSatelliteLayer.addTo(map);sat.classList.add('active');street.classList.remove('active');}
+    else{if(map.hasLayer(_ykSatelliteLayer))map.removeLayer(_ykSatelliteLayer);_ykStreetLayer.addTo(map);street.classList.add('active');sat.classList.remove('active');}
+  }catch(e){toast('بارگذاری لایه نقشه ناموفق بود.');}
 }
-function initOfflineMap(){
-  const box=document.getElementById('measureMap');if(!box)return;
-  box.innerHTML=`<div class="yk-offline-map"><svg id="offlineMeasureSvg" viewBox="0 0 360 520"><defs><pattern id="offlineGrid" width="30" height="30" patternUnits="userSpaceOnUse"><path d="M30 0H0V30" fill="none" stroke="#cfe3d8" stroke-width="1"/></pattern></defs><rect width="360" height="520" fill="url(#offlineGrid)"/><text x="180" y="35" text-anchor="middle" fill="#17664b" font-size="15" font-weight="800">📐 اندازه‌گیری آفلاین</text><text x="180" y="57" text-anchor="middle" fill="#60756a" font-size="10">با لمس صفحه نقاط زمین را مشخص کن</text></svg></div>`;
-  const svg=document.getElementById('offlineMeasureSvg');svg.addEventListener('click',offlineMeasureClick);redraw();
-  const S=document.getElementById('measureStatus');if(S)S.textContent='آفلاین: نقاط را روی صفحه لمس کن؛ مساحت و محیط محاسبه می‌شود.';
+function offlineMeasureClick(e){
+  const svg=document.getElementById('offlineMeasureSvg');if(!svg)return;
+  const r=svg.getBoundingClientRect(),x=Math.max(0,Math.min(360,(e.clientX-r.left)/r.width*360)),y=Math.max(0,Math.min(520,(e.clientY-r.top)/r.height*520));
+  addPoint(35.7+(260-y)*0.00001,51.4+(x-180)*0.00001);
 }
-function redrawLeaflet(){
-  if(!map)return;
-  if(window.__ykMarkers)window.__ykMarkers.forEach(m=>m.remove());window.__ykMarkers=[];if(window.__ykPolygon){window.__ykPolygon.remove();window.__ykPolygon=null;}
-  points.forEach((p,i)=>{const m=L.marker(p,{draggable:true}).addTo(map);m.bindTooltip(String(i+1),{permanent:true,direction:'top',offset:[0,-10]});m.on('dragend',()=>{const q=m.getLatLng();points[i]=[q.lat,q.lng];redrawLeaflet();updateMeasure();});window.__ykMarkers.push(m);});
-  if(points.length>=3)window.__ykPolygon=L.polygon(points,{color:'#176b38',weight:3,fillOpacity:.18}).addTo(map);updateMeasure();
-}
-function offlineMeasureClick(e){const svg=document.getElementById('offlineMeasureSvg'),r=svg.getBoundingClientRect(),x=Math.max(0,Math.min(360,(e.clientX-r.left)/r.width*360)),y=Math.max(0,Math.min(520,(e.clientY-r.top)/r.height*520));addPoint(35.7+(260-y)*.00005,51.4+(x-180)*.00005)}
 function coordToXY(p){if(!points.length)return[180,260];const xs=points.map(q=>q[1]),ys=points.map(q=>q[0]),minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys),pad=55,w=Math.max(maxX-minX,1e-9),h=Math.max(maxY-minY,1e-9);return[pad+(p[1]-minX)/w*(360-pad*2),pad+(maxY-p[0])/h*(520-pad*2)]}
-function redraw(){if(map){redrawLeaflet();return}const svg=document.getElementById('offlineMeasureSvg');if(!svg)return;svg.querySelectorAll('.dyn').forEach(x=>x.remove());if(points.length){const xy=points.map(coordToXY),poly=xy.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');svg.insertAdjacentHTML('beforeend',`<polygon class="dyn" points="${poly}" fill="#17664b" fill-opacity=".18" stroke="#17664b" stroke-width="3"/>`);xy.forEach((p,i)=>svg.insertAdjacentHTML('beforeend',`<circle class="dyn" cx="${p[0]}" cy="${p[1]}" r="7" fill="#fff" stroke="#17664b" stroke-width="3"/><text class="dyn" x="${p[0]+9}" y="${p[1]-9}" fill="#17664b" font-size="11" font-weight="800">${i+1}</text>`))}updateMeasure()}
-function geoDistance(a,b){const R=6371008.8,toRad=v=>v*Math.PI/180,dLat=(b[0]-a[0])*toRad(1),dLon=(b[1]-a[1])*toRad(1),lat1=a[0]*toRad(1),lat2=b[0]*toRad(1),h=Math.sin(dLat/2)**2+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.min(1,Math.sqrt(h)))}
-function perimeter(ps){if(!Array.isArray(ps)||ps.length<2)return 0;let total=0;for(let i=0;i<ps.length;i++)total+=geoDistance(ps[i],ps[(i+1)%ps.length]);return total}
-function areaM(ps){if(!Array.isArray(ps)||ps.length<3)return 0;const R=6371008.8,toRad=v=>v*Math.PI/180,lat0=ps.reduce((s,p)=>s+Number(p[0]),0)/ps.length,pts=ps.map(p=>[R*toRad(Number(p[1]))*Math.cos(toRad(lat0)),R*toRad(Number(p[0]))]);let sum=0;for(let i=0;i<pts.length;i++){const a=pts[i],b=pts[(i+1)%pts.length];sum+=a[0]*b[1]-b[0]*a[1]}return Math.abs(sum)/2}
-function updateMeasure(){const A=document.getElementById('ma'),H=document.getElementById('mh'),P=document.getElementById('mp'),N=document.getElementById('mn'),R=document.getElementById('register'),S=document.getElementById('measureStatus'),count=Array.isArray(points)?points.length:0;if(N)N.textContent=count.toLocaleString('fa-IR');if(R)R.disabled=count<3;if(!count){if(A)A.textContent='۰';if(H)H.textContent='۰.۰۰۰۰';if(P)P.textContent='۰';return}const a=Math.max(0,Number(areaM(points))||0),p=Math.max(0,Number(perimeter(points))||0);if(A)A.textContent=Math.round(a).toLocaleString('fa-IR');if(H)H.textContent=(a/10000).toLocaleString('fa-IR',{minimumFractionDigits:4,maximumFractionDigits:4});if(P)P.textContent=Math.round(p).toLocaleString('fa-IR');if(S)S.textContent=count<3?'حداقل ۳ نقطه لازم است.':'آماده ثبت — '+count.toLocaleString('fa-IR')+' نقطه'}
-function addPoint(lat,lng){lat=Number(lat);lng=Number(lng);if(!Number.isFinite(lat)||!Number.isFinite(lng))return;const last=points[points.length-1];if(last&&geoDistance(last,[lat,lng])<1)return;points.push([lat,lng]);redraw()}
-function undo(){if(points.length){points.pop();redraw()}}
-function clearMeasure(){if(confirm('همه نقاط اندازه‌گیری پاک شود؟')){points=[];redraw()}}
-function locate(){if(!navigator.geolocation)return toast('GPS در دسترس نیست');navigator.geolocation.getCurrentPosition(p=>{addPoint(p.coords.latitude,p.coords.longitude);if(map)map.setView([p.coords.latitude,p.coords.longitude],18);toast('موقعیت GPS اضافه شد')},()=>toast('دریافت موقعیت GPS ناموفق بود'),{enableHighAccuracy:true,timeout:15000,maximumAge:1000})}
-function toggleGPS(){if(watch!==null){stopGPS();return}if(!navigator.geolocation)return toast('GPS در دسترس نیست');watch=navigator.geolocation.watchPosition(p=>{addPoint(p.coords.latitude,p.coords.longitude);if(map&&points.length===1)map.setView([p.coords.latitude,p.coords.longitude],18)},()=>{stopGPS();toast('سیگنال GPS دریافت نشد')},{enableHighAccuracy:true,maximumAge:1000,timeout:15000});let b=document.getElementById('gpsBtn');if(b)b.textContent='■ توقف GPS'}
-function stopGPS(){if(watch!==null){navigator.geolocation.clearWatch(watch);watch=null}let b=document.getElementById('gpsBtn');if(b)b.textContent='▶ ثبت با GPS'}
-function closeMeasure(){stopGPS();if(map){map.remove();map=null}baseLayer=null;satLayer=null;let r=measureReturn||'home';measureReturn=null;go(r)}
-function resetMapBearing(){toast('برای تغییر جهت نقشه از کنترل نقشه استفاده کن.')}
-function toggleSat(){if(!map||!satLayer){toast(navigator.onLine?'در حال آماده‌سازی نقشه ماهواره‌ای؛ چند لحظه بعد دوباره بزن.':'در حالت آفلاین تصویر ماهواره‌ای قابل دریافت نیست.');return}if(activeMapLayer==='sat'){map.removeLayer(satLayer);baseLayer.addTo(map);activeMapLayer='street';}else{map.removeLayer(baseLayer);satLayer.addTo(map);activeMapLayer='sat';}const b=document.getElementById('satBtn');if(b)b.textContent=activeMapLayer==='sat'?'🗺️':'🛰️'}
-function searchPlace(){toast('جستجوی مکان در نسخه آفلاین خاموش است.')}
+function redraw(){
+  if(map&&window.L){
+    if(window._ykMeasureLayer)window._ykMeasureLayer.clearLayers();else window._ykMeasureLayer=L.layerGroup().addTo(map);
+    const group=window._ykMeasureLayer;
+    points.forEach((p,i)=>L.circleMarker(p,{radius:7,color:'#17664b',weight:3,fillColor:'#fff',fillOpacity:1}).bindTooltip(String(i+1),{permanent:true,direction:'top',offset:[0,-7],className:'yk-point-label'}).addTo(group));
+    if(points.length>=2)L.polyline(points,{color:'#17664b',weight:3,dashArray:'7 5'}).addTo(group);
+    if(points.length>=3)L.polygon(points,{color:'#17664b',weight:3,fillColor:'#17664b',fillOpacity:.16}).addTo(group);
+    updateMeasure();return;
+  }
+  const svg=document.getElementById('offlineMeasureSvg');if(!svg)return;
+  svg.querySelectorAll('.dyn').forEach(x=>x.remove());
+  if(points.length){const xy=points.map(coordToXY),poly=xy.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');svg.insertAdjacentHTML('beforeend',`<polygon class="dyn" points="${poly}" fill="#17664b" fill-opacity=".18" stroke="#17664b" stroke-width="3"/>`);xy.forEach((p,i)=>svg.insertAdjacentHTML('beforeend',`<circle class="dyn" cx="${p[0]}" cy="${p[1]}" r="7" fill="#fff" stroke="#17664b" stroke-width="3"/><text class="dyn" x="${p[0]+9}" y="${p[1]-9}" fill="#17664b" font-size="11" font-weight="800">${i+1}</text>`))}
+  updateMeasure();
+}
+function updateMeasure(){
+  const A=document.getElementById('ma');
+  const H=document.getElementById('mh');
+  const P=document.getElementById('mp');
+  const N=document.getElementById('mn');
+  const R=document.getElementById('register');
+  const S=document.getElementById('measureStatus');
+
+  const count=Array.isArray(points)?points.length:0;
+
+  if(N)N.textContent=String(count);
+
+  if(R)R.disabled=count<3;
+
+  if(S){
+    S.textContent=count<3
+      ?'حداقل ۳ نقطه لازم است.'
+      :'آماده ثبت — '+count+' نقطه';
+  }
+
+  if(count===0){
+    if(A)A.textContent='۰';
+    if(H)H.textContent='۰.۰۰۰۰';
+    if(P)P.textContent='۰';
+    return;
+  }
+
+  let a=0;
+  let p=0;
+
+  try{
+    a=Number(areaM(points))||0;
+    p=Number(perimeter(points))||0;
+  }catch(e){
+    console.error('measurement error',e);
+  }
+
+  if(A)A.textContent=Math.round(a).toLocaleString('fa-IR');
+  if(H)H.textContent=(a/10000).toFixed(4);
+  if(P)P.textContent=Math.round(p).toLocaleString('fa-IR');
+                     }
+function addPoint(lat,lng){lat=Number(lat);lng=Number(lng);if(!Number.isFinite(lat)||!Number.isFinite(lng))return;const last=points[points.length-1];if(last&&Math.abs(last[0]-lat)<1e-7&&Math.abs(last[1]-lng)<1e-7)return;points.push([lat,lng]);redraw()}function undo(){if(points.length){points.pop();redraw()}}function clearMeasure(){points=[];redraw()}function locate(){if(!navigator.geolocation)return toast('GPS در دسترس نیست');navigator.geolocation.getCurrentPosition(p=>{addPoint(p.coords.latitude,p.coords.longitude);if(map)map.setView([p.coords.latitude,p.coords.longitude],18);toast('موقعیت GPS اضافه شد')},()=>toast('دریافت موقعیت GPS ناموفق بود'),{enableHighAccuracy:true,timeout:15000,maximumAge:1000})}function toggleGPS(){if(watch!==null){stopGPS();return}if(!navigator.geolocation)return toast('GPS در دسترس نیست');watch=navigator.geolocation.watchPosition(p=>{addPoint(p.coords.latitude,p.coords.longitude);if(map&&points.length===1)map.setView([p.coords.latitude,p.coords.longitude],18)},()=>{stopGPS();toast('سیگنال GPS دریافت نشد')},{enableHighAccuracy:true,maximumAge:1000,timeout:15000});let b=document.getElementById('gpsBtn');if(b)b.textContent='■ توقف GPS'}function stopGPS(){if(watch!==null){navigator.geolocation.clearWatch(watch);watch=null}let b=document.getElementById('gpsBtn');if(b)b.textContent='▶ ثبت با GPS'}function closeMeasure(){stopGPS();try{if(map){map.remove();map=null}}catch(_){}measureReturn=measureReturn||'home';let r=measureReturn;measureReturn=null;go(r)}function resetMapBearing(){if(map)map.setBearing?.(0);else toast('قطب‌نما در حالت آفلاین در دسترس نیست.')}function toggleSat(){if(map)setMapLayer('satellite');else toast('تصویر ماهواره‌ای بدون اینترنت در دسترس نیست.')}function searchPlace(){toast('جستجوی مکان در این نسخه نیازمند اینترنت است.')}
 function registerMeasured(){
   if(points.length<3){toast('حداقل ۳ نقطه لازم است');return}
   let a=areaM(points), p=perimeter(points), lat=points.reduce((s,x)=>s+x[0],0)/points.length, lng=points.reduce((s,x)=>s+x[1],0)/points.length;

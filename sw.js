@@ -9,7 +9,8 @@ const CORE=[
   './offline/specialized-crop-profiles.js','./offline/universal-crop-engine.js',
   './manifest.webmanifest','./icon-192.png','./icon-512.png','./logo.png',
   './wheat-hero.jpg','./admin.html','./admin.js','./admin.css',
-  './knowledge/knowledge.json',  './offline/crop-ui.js?v=20260921-accordion-v1'
+  './knowledge/knowledge.json',
+  './offline/crop-ui.js?v=20260921-accordion-v1'
 ];
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE).catch(()=>{})).then(()=>self.skipWaiting()))
