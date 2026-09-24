@@ -343,7 +343,7 @@ export default findOfflineAnswer;
 if(typeof window!=="undefined"){
   window.YarKeshavarzOffline={
     ...(window.YarKeshavarzOffline||{}),
-    findOfflineAnswer,searchKnowledge,findCropProfileAnswer
+    findOfflineAnswer,searchKnowledge,findCropProfileAnswer,listCropProfiles:()=>Object.keys(cropProfiles)
   };
   // اگر رابط کشاورزیار از قبل ساخته شده باشد، رندر جدید را فعال کن.
   installCropProfileRenderer();
