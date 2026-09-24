@@ -143,4 +143,13 @@ function addPlan(){
     '<div style="display:flex;gap:14px;flex-wrap:wrap;margin:10px 2px;color:#60736a;font-size:12px">'+
       '<span>● نقاط مرزی</span>'+
       '<span>━ مرز زمین</span>'+
-      '<span>● مرکز
+      '<span>● مرکز زمین</span>'+
+      '<span>📐 '+area.toLocaleString('fa-IR')+' مترمربع</span>'+
+      '<span>🌾 '+hectare.toLocaleString('fa-IR',{maximumFractionDigits:2})+' هکتار</span>'+
+      (perimeter>0?'<span>↔ '+perimeter.toLocaleString('fa-IR',{maximumFractionDigits:0})+' متر محیط</span>':'')+
+    '</div>';
+
+  anchor.appendChild(card);
+}
+
+})();
