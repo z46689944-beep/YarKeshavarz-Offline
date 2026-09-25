@@ -1,5 +1,5 @@
 // =========================================================
-// YarKeshavarz - Modular Core
+// YarKeshavarz - Modular Core V2
 // =========================================================
 
 const KEY = 'yar-keshavarz-v4-single';
@@ -18,9 +18,21 @@ let state = JSON.parse(localStorage.getItem(KEY) || 'null') || {
   profile: {},
   expenses: [],
   income: [],
+  transactions: [],
   settings: {},
   messages: []
 };
+
+// سازگاری با نسخه‌های قدیمی
+state.lands = Array.isArray(state.lands) ? state.lands : [];
+state.inventory = Array.isArray(state.inventory) ? state.inventory : [];
+state.equipment = Array.isArray(state.equipment) ? state.equipment : [];
+state.expenses = Array.isArray(state.expenses) ? state.expenses : [];
+state.income = Array.isArray(state.income) ? state.income : [];
+state.transactions = Array.isArray(state.transactions) ? state.transactions : [];
+state.messages = Array.isArray(state.messages) ? state.messages : [];
+state.profile = state.profile || {};
+state.settings = state.settings || {};
 
 let selected = null;
 
@@ -41,8 +53,10 @@ let measureReturn = 'add';
 function save() {
   try {
     localStorage.setItem(KEY, JSON.stringify(state));
+    return true;
   } catch (error) {
     console.error('Save failed:', error);
+    return false;
   }
 }
 
@@ -62,6 +76,49 @@ function head(x) {
 // Helpers
 // =========================================================
 
+function uid() {
+  return 'yk-' +
+    Date.now().toString(36) +
+    '-' +
+    Math.random().toString(36).slice(2, 9);
+}
+
+
+function n(value) {
+  if (value === null || value === undefined || value === '') {
+    return 0;
+  }
+
+  const s = String(value)
+    .replace(/[٬,]/g, '')
+    .replace(/[۰-۹]/g, d =>
+      String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+    )
+    .replace(/[٠-٩]/g, d =>
+      String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))
+    );
+
+  const x = Number(s);
+
+  return Number.isFinite(x) ? x : 0;
+}
+
+
+function num(value) {
+  return n(value).toLocaleString('fa-IR');
+}
+
+
+function faNum(value) {
+  return n(value).toLocaleString('fa-IR');
+}
+
+
+function money(value) {
+  return n(value).toLocaleString('fa-IR') + ' تومان';
+}
+
+
 function esc(value) {
   return String(value ?? '')
     .replace(/&/g, '&amp;')
@@ -72,21 +129,147 @@ function esc(value) {
 }
 
 
-function money(value) {
-  const n = Number(value || 0);
+// =========================================================
+// Totals / Economy
+// =========================================================
 
-  return n.toLocaleString('fa-IR') + ' تومان';
+function totals(landId) {
+
+  let rows = [];
+
+  /*
+   * نسخه جدید
+   */
+  if (Array.isArray(state.transactions)) {
+    rows = state.transactions.slice();
+
+    if (landId) {
+      rows = rows.filter(x => x.landId === landId);
+    }
+  }
+
+  /*
+   * سازگاری با نسخه قدیمی
+   */
+  if (!rows.length) {
+
+    const expenses = Array.isArray(state.expenses)
+      ? state.expenses
+      : [];
+
+    const income = Array.isArray(state.income)
+      ? state.income
+      : [];
+
+    rows = [
+      ...expenses.map(x => ({
+        ...x,
+        type: 'expense'
+      })),
+
+      ...income.map(x => ({
+        ...x,
+        type: 'income'
+      }))
+    ];
+
+    if (landId) {
+      rows = rows.filter(x => x.landId === landId);
+    }
+  }
+
+  const cost = rows
+    .filter(x => x.type === 'expense')
+    .reduce((a, x) => a + n(x.amount), 0);
+
+  const income = rows
+    .filter(x => x.type === 'income')
+    .reduce((a, x) => a + n(x.amount), 0);
+
+  return {
+    cost,
+    income,
+    profit: income - cost
+  };
 }
 
 
-function num(value) {
-  const n = Number(value || 0);
+// =========================================================
+// Date helpers
+// =========================================================
 
-  return n.toLocaleString('fa-IR');
+function jalaliDate(value) {
+
+  try {
+
+    const d = value instanceof Date
+      ? value
+      : new Date(value);
+
+    if (Number.isNaN(d.getTime())) {
+      return String(value || '');
+    }
+
+    return new Intl.DateTimeFormat(
+      'fa-IR-u-ca-persian',
+      {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }
+    ).format(d);
+
+  } catch (e) {
+
+    return String(value || '');
+
+  }
 }
 
+
+function parseJalaliDate(value) {
+
+  const s = String(value || '')
+    .trim()
+    .replace(/[۰-۹]/g, d =>
+      String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+    )
+    .replace(/[٠-٩]/g, d =>
+      String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))
+    );
+
+  const m = s.match(
+    /^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})$/
+  );
+
+  if (!m) {
+    return '';
+  }
+
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const day = Number(m[3]);
+
+  if (
+    y < 1300 ||
+    mo < 1 ||
+    mo > 12 ||
+    day < 1 ||
+    day > 31
+  ) {
+    return '';
+  }
+
+  return s;
+}
+
+
+// =========================================================
+// Toast
+// =========================================================
 
 function toast(message) {
+
   const old = document.querySelector('.yk-toast');
 
   if (old) {
@@ -96,7 +279,6 @@ function toast(message) {
   const el = document.createElement('div');
 
   el.className = 'yk-toast';
-
   el.textContent = message;
 
   Object.assign(el.style, {
@@ -116,7 +298,11 @@ function toast(message) {
   document.body.appendChild(el);
 
   setTimeout(() => {
-    el.remove();
+
+    if (el.parentNode) {
+      el.remove();
+    }
+
   }, 2500);
 }
 
@@ -128,40 +314,56 @@ function toast(message) {
 function go(route) {
 
   if (!app) {
-    console.error('YarKeshavarz: #app not found');
+    console.error(
+      'YarKeshavarz: #app not found'
+    );
     return;
   }
 
   try {
 
     if (typeof window.renderPage === 'function') {
+
       window.renderPage(route);
       return;
+
     }
 
-    if (typeof window.views === 'object' &&
-        typeof window.views[route] === 'function') {
+    if (
+      typeof window.views === 'object' &&
+      typeof window.views[route] === 'function'
+    ) {
 
       window.views[route]();
       return;
+
     }
 
-    // fallback
     const fn = window[route];
 
     if (typeof fn === 'function') {
+
       fn();
       return;
+
     }
 
-    console.warn('Route not found:', route);
+    console.warn(
+      'Route not found:',
+      route
+    );
 
   } catch (error) {
 
-    console.error('Navigation error:', route, error);
+    console.error(
+      'Navigation error:',
+      route,
+      error
+    );
 
     app.innerHTML = `
       <div class="card" style="margin:20px;text-align:center">
+
         <h3>خطا در باز کردن صفحه</h3>
 
         <p class="muted">
@@ -172,8 +374,10 @@ function go(route) {
                 onclick="location.reload()">
           تلاش دوباره
         </button>
+
       </div>
     `;
+
   }
 }
 
@@ -187,9 +391,27 @@ function openLand(id) {
   selected = id;
 
   try {
-    localStorage.setItem('yk-last-land', id);
+    localStorage.setItem(
+      'yk-last-land',
+      id
+    );
   } catch (e) {}
 
+  /*
+   * views.js فعلی از تابع openLand
+   * به صورت مستقیم استفاده می‌کند.
+   */
+  if (typeof window.openLandView === 'function') {
+
+    window.openLandView(id);
+    return;
+
+  }
+
+  /*
+   * در پروژه فعلی صفحه زمین با route land
+   * یا تابع openLand مدیریت می‌شود.
+   */
   go('land');
 }
 
@@ -199,15 +421,27 @@ function editLand(id) {
   selected = id;
 
   try {
-    localStorage.setItem('yk-last-land', id);
+
+    localStorage.setItem(
+      'yk-last-land',
+      id
+    );
+
   } catch (e) {}
 
   measureReturn = 'land';
 
-  if (typeof window.editLandPoints === 'function') {
+  if (
+    typeof window.editLandPoints ===
+    'function'
+  ) {
+
     window.editLandPoints(id);
+
   } else {
+
     go('measure');
+
   }
 }
 
@@ -222,17 +456,30 @@ function weatherFor(land) {
     return null;
   }
 
-  if (typeof window.weatherForModule === 'function') {
+  if (
+    typeof window.weatherForModule ===
+    'function'
+  ) {
+
     try {
+
       return window.weatherForModule(land);
+
     } catch (e) {
-      console.warn('Weather module error:', e);
+
+      console.warn(
+        'Weather module error:',
+        e
+      );
+
     }
+
   }
 
   return {
     temperature: '--',
-    description: 'اطلاعات آب‌وهوا در دسترس نیست'
+    description:
+      'اطلاعات آب‌وهوا در دسترس نیست'
   };
 }
 
@@ -247,7 +494,10 @@ function getMeasureReturn() {
 
 
 function setMeasureReturn(value) {
-  measureReturn = value || 'add';
+
+  measureReturn =
+    value || 'add';
+
 }
 
 
@@ -255,11 +505,12 @@ function setMeasureReturn(value) {
 // Compatibility bridge
 // =========================================================
 //
-// measurement.js و بعضی ماژول‌های قدیمی از window.state,
-// window.selected و ... استفاده می‌کنند.
+// ماژول measurement.js و بعضی ماژول‌های
+// قدیمی از window.state و window.points
+// و window.selected استفاده می‌کنند.
 //
-// متغیرهای اصلی بالا با let نگهداری می‌شوند؛
-// این bridge باعث می‌شود هر دو طرف به همان داده واقعی دسترسی داشته باشند.
+// این bridge همان داده اصلی را در اختیار
+// آن ماژول‌ها قرار می‌دهد.
 // =========================================================
 
 const bridge = [
@@ -268,9 +519,16 @@ const bridge = [
     'state',
     () => state,
     value => {
-      if (value && typeof value === 'object') {
+
+      if (
+        value &&
+        typeof value === 'object'
+      ) {
+
         state = value;
+
       }
+
     }
   ],
 
@@ -278,7 +536,9 @@ const bridge = [
     'selected',
     () => selected,
     value => {
+
       selected = value;
+
     }
   ],
 
@@ -286,7 +546,12 @@ const bridge = [
     'points',
     () => points,
     value => {
-      points = Array.isArray(value) ? value : [];
+
+      points =
+        Array.isArray(value)
+          ? value
+          : [];
+
     }
   ],
 
@@ -294,7 +559,12 @@ const bridge = [
     'markers',
     () => markers,
     value => {
-      markers = Array.isArray(value) ? value : [];
+
+      markers =
+        Array.isArray(value)
+          ? value
+          : [];
+
     }
   ],
 
@@ -302,7 +572,9 @@ const bridge = [
     'polygon',
     () => polygon,
     value => {
+
       polygon = value;
+
     }
   ],
 
@@ -310,7 +582,9 @@ const bridge = [
     'map',
     () => map,
     value => {
+
       map = value;
+
     }
   ],
 
@@ -318,7 +592,9 @@ const bridge = [
     'watch',
     () => watch,
     value => {
+
       watch = value;
+
     }
   ],
 
@@ -326,7 +602,9 @@ const bridge = [
     'satellite',
     () => satellite,
     value => {
+
       satellite = !!value;
+
     }
   ],
 
@@ -334,7 +612,10 @@ const bridge = [
     'measureReturn',
     () => measureReturn,
     value => {
-      measureReturn = value || 'add';
+
+      measureReturn =
+        value || 'add';
+
     }
   ]
 
@@ -349,12 +630,16 @@ for (const item of bridge) {
 
   try {
 
-    Object.defineProperty(window, name, {
-      configurable: true,
-      enumerable: false,
-      get: getter,
-      set: setter
-    });
+    Object.defineProperty(
+      window,
+      name,
+      {
+        configurable: true,
+        enumerable: false,
+        get: getter,
+        set: setter
+      }
+    );
 
   } catch (error) {
 
@@ -365,6 +650,7 @@ for (const item of bridge) {
     );
 
   }
+
 }
 
 
@@ -372,72 +658,130 @@ for (const item of bridge) {
 // Public YK API
 // =========================================================
 
-window.YK = window.YK || {};
+window.YK =
+  window.YK || {};
 
 
-window.YK.getState = function() {
-  return state;
-};
+window.YK.getState =
+  function() {
+
+    return state;
+
+  };
 
 
-window.YK.save = function() {
-  return save();
-};
+window.YK.save =
+  function() {
+
+    return save();
+
+  };
 
 
-window.YK.getSelected = function() {
-  return selected;
-};
+window.YK.getSelected =
+  function() {
+
+    return selected;
+
+  };
 
 
-window.YK.setSelected = function(id) {
-  selected = id;
-};
+window.YK.setSelected =
+  function(id) {
+
+    selected = id;
+
+  };
 
 
-window.YK.getPoints = function() {
-  return points;
-};
+window.YK.getPoints =
+  function() {
+
+    return points;
+
+  };
 
 
-window.YK.setPoints = function(value) {
-  points = Array.isArray(value) ? value : [];
-};
+window.YK.setPoints =
+  function(value) {
+
+    points =
+      Array.isArray(value)
+        ? value
+        : [];
+
+  };
 
 
-window.YK.getMeasureReturn = function() {
-  return measureReturn;
-};
+window.YK.getMeasureReturn =
+  function() {
+
+    return measureReturn;
+
+  };
 
 
-window.YK.setMeasureReturn = function(value) {
-  measureReturn = value || 'add';
-};
+window.YK.setMeasureReturn =
+  function(value) {
+
+    measureReturn =
+      value || 'add';
+
+  };
+
+
+window.YK.totals =
+  function(landId) {
+
+    return totals(landId);
+
+  };
+
+
+window.YK.uid =
+  function() {
+
+    return uid();
+
+  };
+
+
+window.YK.number =
+  function(value) {
+
+    return n(value);
+
+  };
 
 
 // =========================================================
 // Navigation from data-r buttons
 // =========================================================
 
-document.addEventListener('click', function(e) {
+document.addEventListener(
+  'click',
+  function(e) {
 
-  const button = e.target.closest('[data-r]');
+    const button =
+      e.target.closest('[data-r]');
 
-  if (!button) {
-    return;
+    if (!button) {
+      return;
+    }
+
+    const route =
+      button.dataset.r;
+
+    if (!route) {
+      return;
+    }
+
+    e.preventDefault();
+
+    go(route);
+
   }
-
-  const route = button.dataset.r;
-
-  if (!route) {
-    return;
-  }
-
-  e.preventDefault();
-
-  go(route);
-
-});
+);
 
 
 // =========================================================
@@ -456,43 +800,73 @@ window.save = save;
 
 window.toast = toast;
 
+window.uid = uid;
+
+window.n = n;
+
+window.num = num;
+
+window.money = money;
+
+window.totals = totals;
+
+window.jalaliDate = jalaliDate;
+
+window.parseJalaliDate =
+  parseJalaliDate;
+
+window.esc = esc;
+
 
 // =========================================================
 // Measurement helpers
 // =========================================================
 
-window.startMeasureForNewLand = function() {
+window.startMeasureForNewLand =
+  function() {
 
-  selected = null;
+    selected = null;
 
-  measureReturn = 'add';
+    measureReturn = 'add';
 
-  points = [];
+    points = [];
 
-  markers = [];
+    markers = [];
 
-  polygon = null;
+    polygon = null;
 
-  try {
-    sessionStorage.removeItem('yk-pending-measure');
-  } catch (e) {}
+    try {
 
-  go('measure');
-};
+      sessionStorage.removeItem(
+        'yk-pending-measure'
+      );
+
+    } catch (e) {}
+
+    go('measure');
+
+  };
 
 
-window.editLandPoints = function(id) {
+window.editLandPoints =
+  function(id) {
 
-  selected = id;
+    selected = id;
 
-  measureReturn = 'land';
+    measureReturn = 'land';
 
-  try {
-    localStorage.setItem('yk-last-land', id);
-  } catch (e) {}
+    try {
 
-  go('measure');
-};
+      localStorage.setItem(
+        'yk-last-land',
+        id
+      );
+
+    } catch (e) {}
+
+    go('measure');
+
+  };
 
 
 // =========================================================
@@ -513,7 +887,8 @@ try {
   if (app) {
 
     app.innerHTML = `
-      <div class="card" style="margin:20px;text-align:center">
+      <div class="card"
+           style="margin:20px;text-align:center">
 
         <h3>خطا در اجرای برنامه</h3>
 
@@ -540,26 +915,29 @@ try {
 
 if ('serviceWorker' in navigator) {
 
-  window.addEventListener('load', function() {
+  window.addEventListener(
+    'load',
+    function() {
 
-    navigator.serviceWorker
-      .register('./sw.js')
-      .then(function() {
+      navigator.serviceWorker
+        .register('./sw.js')
+        .then(function() {
 
-        console.log(
-          'YarKeshavarz Service Worker registered'
-        );
+          console.log(
+            'YarKeshavarz Service Worker registered'
+          );
 
-      })
-      .catch(function(error) {
+        })
+        .catch(function(error) {
 
-        console.warn(
-          'Service Worker registration failed:',
-          error
-        );
+          console.warn(
+            'Service Worker registration failed:',
+            error
+          );
 
-      });
+        });
 
-  });
+    }
+  );
 
 }
