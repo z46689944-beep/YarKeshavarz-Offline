@@ -76,7 +76,9 @@ function glassIcon(icon){return `<span class="glass-icon">${icon}</span>`}
 
 function esc(v=''){return String(v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function toast(x){alert(x)}
-function head(x){title.textContent=x}
+function head(x){
+  if(title) title.textContent=x;
+}
 function totals(id){let t=state.transactions.filter(x=>!id||x.landId===id),c=t.filter(x=>x.type==='expense').reduce((a,x)=>a+n(x.amount),0),i=t.filter(x=>x.type==='income').reduce((a,x)=>a+n(x.amount),0);return{cost:c,income:i,profit:i-c}}
 function go(r){if(r==='measure'&&!measureReturn){selected=null;measureReturn='add'}route=r;window.scrollTo({top:0,left:0,behavior:'instant'});if(r==='home')home();else if(r==='lands')lands();else if(r==='add')add();else if(r==='measure')measure();else if(r==='inventory')inventory();else if(r==='weather')weather();else if(r==='equipment')equipment();else if(r==='calculator'){toast('محاسبه‌گر برآورد از نسخه نهایی حذف شده است');go('home')}else if(r==='cultivation')cultivation();else if(r==='profile')profile();else if(r==='account')account();else if(r==='settings')settings();else if(r==='manager')managerChat();else if(r==='ads')ads();else if(r==='news')news();else if(r==='yar')yar();else if(r==='game')game();else home();document.querySelectorAll('.bottom button').forEach(b=>b.classList.toggle('active',b.dataset.r===r))}
 
