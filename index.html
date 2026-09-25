@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b3d2e">
+<meta name="description" content="یار کشاورز — مدیریت زمین، کشت، هزینه، انبار و آب‌وهوا">
+<!-- YarKeshavarz OFFLINE V1 -->
+<title>یار کشاورز — نسخه آفلاین</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="css/main.css">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</head>
+<body>
+<header class="top"><div class="brand"><div class="logo">🌾</div><div><b>یار کشاورز</b><small id="pageTitle">خانه · آفلاین</small></div></div><button id="backup">↥</button></header>
+<main id="app"></main>
+<nav class="bottom"><button data-r="home">⌂<span>خانه</span></button><button data-r="news">▤<span>اخبار</span></button><button data-r="game">🎮<span>سرگرمی</span></button><button data-r="yar" onclick="yarLandMode=false;selected=null;go('yar')">✦<span>کشاورزیار</span></button><button data-r="ads">◈<span>تبلیغات</span></button><button data-r="account">●<span>اکانت</span></button></nav>
+<input id="restore" type="file" accept="application/json" hidden>
+
+
+
+<div id="funShell" class="fun-shell" aria-hidden="true">
+<div class="fun-inner">
+<div class="fun-top"><div><h1>🎮 سرگرمی یار کشاورز</h1><small>بخش مستقل؛ بدون ارتباط با اطلاعات مزرعه</small></div><button class="fun-back" onclick="closeFun()">↩ بازگشت</button></div>
+<div class="fun-score"><div class="fs"><b id="funScore">۰</b><span>امتیاز</span></div><div class="fs"><b id="funHigh">۰</b><span>رکورد</span></div><div class="fs"><b id="funStreak">۰</b><span>پشت‌سرهم</span></div></div>
+<div id="funHome" class="fun-grid">
+<div class="fun-card"><div class="fun-icon">🧠</div><h2>معمای کشاورزی</h2><p>معماهای کوتاه درباره خاک، آب و کشت.</p><button class="fun-btn" onclick="funStart('riddle')">شروع</button></div>
+<div class="fun-card"><div class="fun-icon">🌾</div><h2>حدس محصول</h2><p>از روی سرنخ‌ها محصول را پیدا کن.</p><button class="fun-btn" onclick="funStart('crop')">شروع</button></div>
+<div class="fun-card"><div class="fun-icon">🚜</div><h2>حدس ادوات</h2><p>کاربرد وسیله را ببین و حدس بزن.</p><button class="fun-btn" onclick="funStart('tool')">شروع</button></div>
+<div class="fun-card"><div class="fun-icon">❓</div><h2>سؤال کشاورزی</h2><p>دانستنی‌های کاربردی کشاورزی.</p><button class="fun-btn" onclick="funStart('quiz')">شروع</button></div>
+<div class="fun-card"><div class="fun-icon">😂</div><h2>مطالب جالب</h2><p>هر بار یک دانستنی کوتاه و جذاب.</p><button class="fun-btn" onclick="funFact()">نمایش</button></div>
+</div><div id="funPanel" class="fun-panel" style="display:none"></div>
+</div></div>
+<!-- V3 CHAT FIX: clean history, compact close button, silent local fallback. -->
+<!-- V3 FINAL CLEANUP: obsolete estimate calculator removed; route navigation resets scroll to top. -->
+
+<script src="modules/fun.js"></script>
+<script src="modules/land.js"></script>
+<script src="modules/inventory.js"></script>
+<script src="modules/cultivation.js"></script>
+<script src="modules/weather.js"></script>
+<script src="modules/yar.js"></script>
+<script src="modules/game.js"></script>
+<script src="modules/equipment.js"></script>
+<script src="modules/manager.js"></script>
+<script src="modules/settings.js"></script>
+<script src="modules/backup.js"></script>
+<script src="pages/views.js"></script>
+<script src="modules/app.js"></script>
+<script src="modules/offline-loader.js"></script>
+<script src="offline/crop-ui.js?v=20260921-accordion-v1"></script>
+</body>
+</html>
