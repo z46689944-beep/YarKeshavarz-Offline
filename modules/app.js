@@ -257,12 +257,98 @@ async
 
 
 
-document.getElementById('backup').onclick=backup;document.getElementById('restore').onchange=e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{state={...base,...JSON.parse(r.result)};save();go('home')}catch{toast('فایل پشتیبان نامعتبر است')}};r.readAsText(f)}
-document.addEventListener('click',e=>{let b=e.target.closest('[data-r]');if(b)go(b.dataset.r)});
-document.getElementById('restore').onchange=e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{state={...base,...JSON.parse(r.result)};save();toast('پشتیبان بازیابی شد');go('home')}catch{toast('فایل پشتیبان معتبر نیست')}};r.readAsText(f)};
-window.go=go;window.openLand=openLand;window.weatherFor=weatherFor;window.editLand=editLand;go('home');
+// =========================================================
+// اتصال‌های نهایی برنامه
+// =========================================================
 
-// Offline-first: cache the application shell when the browser supports service workers.
-if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+// مسیریابی از دکمه‌هایی که data-r دارند
+document.addEventListener('click', function(e) {
+  const button = e.target.closest('[data-r]');
+  if (!button) return;
+
+  const route = button.dataset.r;
+  if (route) {
+    go(route);
+  }
+});
+
+
+// ---------------------------------------------------------
+// اتصال عمومی توابع مورد نیاز صفحات و ماژول‌ها
+// ---------------------------------------------------------
+
+window.go = go;
+window.openLand = openLand;
+window.weatherFor = weatherFor;
+window.editLand = editLand;
+
+
+// ---------------------------------------------------------
+// دسترسی امن برای ماژول‌های جداگانه
+// ---------------------------------------------------------
+
+window.YK = window.YK || {};
+
+window.YK.getState = function() {
+  return state;
+};
+
+window.YK.save = function() {
+  return save();
+};
+
+window.YK.getSelected = function() {
+  return selected;
+};
+
+window.YK.setSelected = function(id) {
+  selected = id;
+};
+
+window.YK.getMeasureReturn = function() {
+  return measureReturn;
+};
+
+window.YK.setMeasureReturn = function(value) {
+  measureReturn = value;
+};
+
+
+// ---------------------------------------------------------
+// شروع برنامه
+// ---------------------------------------------------------
+
+try {
+  go('home');
+} catch (error) {
+  console.error('YarKeshavarz startup error:', error);
+
+  if (app) {
+    app.innerHTML = `
+      <div class="card" style="margin:20px;text-align:center">
+        <h3>خطا در اجرای برنامه</h3>
+        <p class="muted">
+          برنامه نتوانست کامل اجرا شود.
+        </p>
+        <button class="primary" onclick="location.reload()">
+          تلاش دوباره
+        </button>
+      </div>
+    `;
+  }
+}
+
+
+// ---------------------------------------------------------
+// Service Worker
+// ---------------------------------------------------------
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker
+      .register('./sw.js')
+      .catch(function(error) {
+        console.warn('Service Worker registration failed:', error);
+      });
+  });
 }
