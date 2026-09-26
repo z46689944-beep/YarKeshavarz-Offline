@@ -775,5 +775,24 @@ window.go=go;window.openLand=openLand;window.weatherFor=weatherFor;window.editLa
 </div><div id="funPanel" class="fun-panel" style="display:none"></div>
 </div></div>
 <script src="./offline/offline-ai.js"></script>
-</body>
+  
+</<script>
+window.addEventListener('error', function(e) {
+  document.body.innerHTML =
+    '<div style="direction:rtl;padding:25px;font-family:sans-serif">' +
+    '<h2>خطای واقعی برنامه</h2>' +
+    '<pre style="white-space:pre-wrap;color:red">' +
+    (e.error && e.error.stack ? e.error.stack : e.message) +
+    '</pre></div>';
+});
+
+window.addEventListener('unhandledrejection', function(e) {
+  document.body.innerHTML =
+    '<div style="direction:rtl;padding:25px;font-family:sans-serif">' +
+    '<h2>خطای Promise</h2>' +
+    '<pre style="white-space:pre-wrap;color:red">' +
+    (e.reason && e.reason.stack ? e.reason.stack : String(e.reason)) +
+    '</pre></div>';
+});
+</script>>
 </html>
