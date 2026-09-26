@@ -11,7 +11,7 @@ const title = document.getElementById('pageTitle');
 // State
 // =========================================================
 
-let state = JSON.parse(localStorage.getItem(KEY) || 'null') || {
+let state = {
   lands: [],
   inventory: [],
   equipment: [],
@@ -22,6 +22,28 @@ let state = JSON.parse(localStorage.getItem(KEY) || 'null') || {
   settings: {},
   messages: []
 };
+
+// خواندن امن اطلاعات ذخیره‌شده
+try {
+  const raw = localStorage.getItem(KEY);
+
+  if (raw) {
+    const parsed = JSON.parse(raw);
+
+    if (
+      parsed &&
+      typeof parsed === 'object' &&
+      !Array.isArray(parsed)
+    ) {
+      state = parsed;
+    }
+  }
+} catch (error) {
+  console.warn(
+    'اطلاعات ذخیره‌شده خراب بود؛ برنامه با داده سالم اجرا می‌شود.',
+    error
+  );
+}
 
 // سازگاری با نسخه‌های قدیمی
 state.lands = Array.isArray(state.lands) ? state.lands : [];
