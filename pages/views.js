@@ -328,7 +328,26 @@ function home(){
 
   loadHomeWeather();
 }
+function lands(){
+  head('زمین‌ها');
 
+  app.innerHTML = `
+    <div class="section">
+      <h2>زمین‌های من</h2>
+      <button class="primary" onclick="go('add')">
+        ＋ زمین جدید
+      </button>
+    </div>
+
+    <div class="list">
+      ${
+        state.lands.map(landCard).join('')
+        ||
+        '<div class="card empty">هنوز زمینی ثبت نشده است.</div>'
+      }
+    </div>
+  `;
+}
             
 function landSchematic(l){
   const ps=l&&l.measurement&&Array.isArray(l.measurement.points)?l.measurement.points:[];
