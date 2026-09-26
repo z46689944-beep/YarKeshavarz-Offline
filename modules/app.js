@@ -1,220 +1,943 @@
 // =========================================================
-// YarKeshavarz - STARTUP DEBUG
-// فقط برای پیدا کردن خطای واقعی برنامه
+// YarKeshavarz - Modular Core V2
 // =========================================================
 
-(function () {
+const KEY = 'yar-keshavarz-v4-single';
 
-  'use strict';
+const app = document.getElementById('app');
+const title = document.getElementById('pageTitle');
 
-  const app = document.getElementById('app');
+// =========================================================
+// State
+// =========================================================
 
-  function escapeHtml(value) {
-    return String(value ?? '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
+let state = JSON.parse(localStorage.getItem(KEY) || 'null') || {
+  lands: [],
+  inventory: [],
+  equipment: [],
+  profile: {},
+  expenses: [],
+  income: [],
+  transactions: [],
+  settings: {},
+  messages: []
+};
+
+// سازگاری با نسخه‌های قدیمی
+state.lands = Array.isArray(state.lands) ? state.lands : [];
+state.inventory = Array.isArray(state.inventory) ? state.inventory : [];
+state.equipment = Array.isArray(state.equipment) ? state.equipment : [];
+state.expenses = Array.isArray(state.expenses) ? state.expenses : [];
+state.income = Array.isArray(state.income) ? state.income : [];
+state.transactions = Array.isArray(state.transactions) ? state.transactions : [];
+state.messages = Array.isArray(state.messages) ? state.messages : [];
+state.profile = state.profile || {};
+state.settings = state.settings || {};
+
+let selected = null;
+
+let points = [];
+let markers = [];
+let polygon = null;
+let map = null;
+let watch = null;
+let satellite = false;
+
+let measureReturn = 'add';
+
+
+// =========================================================
+// Save
+// =========================================================
+
+function save() {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(state));
+    return true;
+  } catch (error) {
+    console.error('Save failed:', error);
+    return false;
+  }
+}
+
+
+// =========================================================
+// Page title
+// =========================================================
+
+function head(x) {
+  if (title) {
+    title.textContent = x;
+  }
+}
+
+
+// =========================================================
+// Helpers
+// =========================================================
+
+function uid() {
+  return 'yk-' +
+    Date.now().toString(36) +
+    '-' +
+    Math.random().toString(36).slice(2, 9);
+}
+
+
+function n(value) {
+  if (value === null || value === undefined || value === '') {
+    return 0;
   }
 
-  function showError(error, title) {
+  const s = String(value)
+    .replace(/[٬,]/g, '')
+    .replace(/[۰-۹]/g, d =>
+      String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+    )
+    .replace(/[٠-٩]/g, d =>
+      String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))
+    );
+
+  const x = Number(s);
+
+  return Number.isFinite(x) ? x : 0;
+}
+
+
+function num(value) {
+  return n(value).toLocaleString('fa-IR');
+}
+
+
+function faNum(value) {
+  return n(value).toLocaleString('fa-IR');
+}
+
+
+function money(value) {
+  return n(value).toLocaleString('fa-IR') + ' تومان';
+}
+
+
+function esc(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+
+// =========================================================
+// Totals / Economy
+// =========================================================
+
+function totals(landId) {
+
+  let rows = [];
+
+  /*
+   * نسخه جدید
+   */
+  if (Array.isArray(state.transactions)) {
+    rows = state.transactions.slice();
+
+    if (landId) {
+      rows = rows.filter(x => x.landId === landId);
+    }
+  }
+
+  /*
+   * سازگاری با نسخه قدیمی
+   */
+  if (!rows.length) {
+
+    const expenses = Array.isArray(state.expenses)
+      ? state.expenses
+      : [];
+
+    const income = Array.isArray(state.income)
+      ? state.income
+      : [];
+
+    rows = [
+      ...expenses.map(x => ({
+        ...x,
+        type: 'expense'
+      })),
+
+      ...income.map(x => ({
+        ...x,
+        type: 'income'
+      }))
+    ];
+
+    if (landId) {
+      rows = rows.filter(x => x.landId === landId);
+    }
+  }
+
+  const cost = rows
+    .filter(x => x.type === 'expense')
+    .reduce((a, x) => a + n(x.amount), 0);
+
+  const income = rows
+    .filter(x => x.type === 'income')
+    .reduce((a, x) => a + n(x.amount), 0);
+
+  return {
+    cost,
+    income,
+    profit: income - cost
+  };
+}
+
+
+// =========================================================
+// Date helpers
+// =========================================================
+
+function jalaliDate(value) {
+
+  try {
+
+    const d = value instanceof Date
+      ? value
+      : new Date(value);
+
+    if (Number.isNaN(d.getTime())) {
+      return String(value || '');
+    }
+
+    return new Intl.DateTimeFormat(
+      'fa-IR-u-ca-persian',
+      {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }
+    ).format(d);
+
+  } catch (e) {
+
+    return String(value || '');
+
+  }
+}
+
+
+function parseJalaliDate(value) {
+
+  const s = String(value || '')
+    .trim()
+    .replace(/[۰-۹]/g, d =>
+      String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+    )
+    .replace(/[٠-٩]/g, d =>
+      String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))
+    );
+
+  const m = s.match(
+    /^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})$/
+  );
+
+  if (!m) {
+    return '';
+  }
+
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const day = Number(m[3]);
+
+  if (
+    y < 1300 ||
+    mo < 1 ||
+    mo > 12 ||
+    day < 1 ||
+    day > 31
+  ) {
+    return '';
+  }
+
+  return s;
+}
+
+
+// =========================================================
+// Toast
+// =========================================================
+
+function toast(message) {
+
+  const old = document.querySelector('.yk-toast');
+
+  if (old) {
+    old.remove();
+  }
+
+  const el = document.createElement('div');
+
+  el.className = 'yk-toast';
+  el.textContent = message;
+
+  Object.assign(el.style, {
+    position: 'fixed',
+    left: '20px',
+    right: '20px',
+    bottom: '20px',
+    zIndex: '99999',
+    padding: '14px',
+    borderRadius: '14px',
+    background: '#222',
+    color: '#fff',
+    textAlign: 'center',
+    boxShadow: '0 5px 20px rgba(0,0,0,.25)'
+  });
+
+  document.body.appendChild(el);
+
+  setTimeout(() => {
+
+    if (el.parentNode) {
+      el.remove();
+    }
+
+  }, 2500);
+}
+
+
+// =========================================================
+// Navigation
+// =========================================================
+
+function go(route) {
+
+  if (!app) {
+    console.error(
+      'YarKeshavarz: #app not found'
+    );
+    return;
+  }
+
+  try {
+
+    if (typeof window.renderPage === 'function') {
+
+      window.renderPage(route);
+      return;
+
+    }
+
+    if (
+      typeof window.views === 'object' &&
+      typeof window.views[route] === 'function'
+    ) {
+
+      window.views[route]();
+      return;
+
+    }
+
+    const fn = window[route];
+
+    if (typeof fn === 'function') {
+
+      fn();
+      return;
+
+    }
+
+    console.warn(
+      'Route not found:',
+      route
+    );
+
+  } catch (error) {
 
     console.error(
-      'YarKeshavarz DEBUG ERROR:',
+      'Navigation error:',
+      route,
       error
     );
 
-    const message =
-      error && error.stack
-        ? error.stack
-        : String(error);
-
-    if (!app) {
-      return;
-    }
-
     app.innerHTML = `
-      <div
-        style="
-          direction:rtl;
-          margin:20px;
-          padding:20px;
-          border-radius:18px;
-          background:#fff;
-          box-shadow:0 4px 20px rgba(0,0,0,.12);
-        "
-      >
+      <div class="card" style="margin:20px;text-align:center">
 
-        <h2 style="margin-top:0">
-          ${escapeHtml(title || 'خطای واقعی برنامه')}
-        </h2>
+        <h3>خطا در باز کردن صفحه</h3>
 
-        <p>
-          خطای اصلی برنامه پیدا شد:
+        <p class="muted">
+          صفحه موردنظر نتوانست اجرا شود.
         </p>
 
-        <pre
-          style="
-            direction:ltr;
-            text-align:left;
-            white-space:pre-wrap;
-            overflow:auto;
-            padding:14px;
-            border-radius:12px;
-            background:#f2f2f2;
-            font-size:13px;
-            line-height:1.6;
-          "
-        >${escapeHtml(message)}</pre>
-
-        <button
-          onclick="location.reload()"
-          style="
-            width:100%;
-            border:0;
-            border-radius:12px;
-            padding:14px;
-            font-size:16px;
-            cursor:pointer;
-          "
-        >
+        <button class="primary"
+                onclick="location.reload()">
           تلاش دوباره
         </button>
 
       </div>
     `;
+
   }
+}
 
 
-  // =======================================================
-  // Global JavaScript error
-  // =======================================================
+// =========================================================
+// Land helpers
+// =========================================================
 
-  window.addEventListener(
-    'error',
-    function (event) {
+function openLand(id) {
 
-      showError(
-        event.error || event.message,
-        'خطای JavaScript'
-      );
-
-    }
-  );
-
-
-  // =======================================================
-  // Promise error
-  // =======================================================
-
-  window.addEventListener(
-    'unhandledrejection',
-    function (event) {
-
-      showError(
-        event.reason || 'Unhandled Promise rejection',
-        'خطای Promise'
-      );
-
-    }
-  );
-
-
-  // =======================================================
-  // Check required elements
-  // =======================================================
+  selected = id;
 
   try {
-
-    if (!app) {
-
-      throw new Error(
-        'عنصر #app در index.html پیدا نشد.'
-      );
-
-    }
-
-  } catch (error) {
-
-    showError(
-      error,
-      'خطای ساختار index.html'
+    localStorage.setItem(
+      'yk-last-land',
+      id
     );
+  } catch (e) {}
 
+  /*
+   * views.js فعلی از تابع openLand
+   * به صورت مستقیم استفاده می‌کند.
+   */
+  if (typeof window.openLandView === 'function') {
+
+    window.openLandView(id);
     return;
 
   }
 
+  /*
+   * در پروژه فعلی صفحه زمین با route land
+   * یا تابع openLand مدیریت می‌شود.
+   */
+  go('land');
+}
 
-  // =======================================================
-  // Check views
-  // =======================================================
+
+function editLand(id) {
+
+  selected = id;
 
   try {
 
-    if (
-      typeof window.go !== 'function' &&
-      typeof window.renderPage !== 'function'
-    ) {
+    localStorage.setItem(
+      'yk-last-land',
+      id
+    );
 
-      throw new Error(
-        'تابع go یا renderPage پیدا نشد. ' +
-        'احتمالاً pages/views.js قبل از app.js اجرا نشده یا خطای نحوی دارد.'
+  } catch (e) {}
+
+  measureReturn = 'land';
+
+  if (
+    typeof window.editLandPoints ===
+    'function'
+  ) {
+
+    window.editLandPoints(id);
+
+  } else {
+
+    go('measure');
+
+  }
+}
+
+
+// =========================================================
+// Weather
+// =========================================================
+
+function weatherFor(land) {
+
+  if (!land) {
+    return null;
+  }
+
+  if (
+    typeof window.weatherForModule ===
+    'function'
+  ) {
+
+    try {
+
+      return window.weatherForModule(land);
+
+    } catch (e) {
+
+      console.warn(
+        'Weather module error:',
+        e
       );
 
     }
 
-  } catch (error) {
-
-    showError(
-      error,
-      'خطای pages/views.js'
-    );
-
-    return;
-
   }
 
+  return {
+    temperature: '--',
+    description:
+      'اطلاعات آب‌وهوا در دسترس نیست'
+  };
+}
 
-  // =======================================================
-  // Run Home
-  // =======================================================
+
+// =========================================================
+// Measurement return state
+// =========================================================
+
+function getMeasureReturn() {
+  return measureReturn;
+}
+
+
+function setMeasureReturn(value) {
+
+  measureReturn =
+    value || 'add';
+
+}
+
+
+// =========================================================
+// Compatibility bridge
+// =========================================================
+//
+// ماژول measurement.js و بعضی ماژول‌های
+// قدیمی از window.state و window.points
+// و window.selected استفاده می‌کنند.
+//
+// این bridge همان داده اصلی را در اختیار
+// آن ماژول‌ها قرار می‌دهد.
+// =========================================================
+
+const bridge = [
+
+  [
+    'state',
+    () => state,
+    value => {
+
+      if (
+        value &&
+        typeof value === 'object'
+      ) {
+
+        state = value;
+
+      }
+
+    }
+  ],
+
+  [
+    'selected',
+    () => selected,
+    value => {
+
+      selected = value;
+
+    }
+  ],
+
+  [
+    'points',
+    () => points,
+    value => {
+
+      points =
+        Array.isArray(value)
+          ? value
+          : [];
+
+    }
+  ],
+
+  [
+    'markers',
+    () => markers,
+    value => {
+
+      markers =
+        Array.isArray(value)
+          ? value
+          : [];
+
+    }
+  ],
+
+  [
+    'polygon',
+    () => polygon,
+    value => {
+
+      polygon = value;
+
+    }
+  ],
+
+  [
+    'map',
+    () => map,
+    value => {
+
+      map = value;
+
+    }
+  ],
+
+  [
+    'watch',
+    () => watch,
+    value => {
+
+      watch = value;
+
+    }
+  ],
+
+  [
+    'satellite',
+    () => satellite,
+    value => {
+
+      satellite = !!value;
+
+    }
+  ],
+
+  [
+    'measureReturn',
+    () => measureReturn,
+    value => {
+
+      measureReturn =
+        value || 'add';
+
+    }
+  ]
+
+];
+
+
+for (const item of bridge) {
+
+  const name = item[0];
+  const getter = item[1];
+  const setter = item[2];
 
   try {
 
-    if (typeof window.go === 'function') {
-
-      window.go('home');
-
-      return;
-
-    }
-
-
-    if (
-      typeof window.renderPage ===
-      'function'
-    ) {
-
-      window.renderPage('home');
-
-      return;
-
-    }
-
-
-    throw new Error(
-      'هیچ تابعی برای باز کردن صفحه اصلی پیدا نشد.'
+    Object.defineProperty(
+      window,
+      name,
+      {
+        configurable: true,
+        enumerable: false,
+        get: getter,
+        set: setter
+      }
     );
 
   } catch (error) {
 
-    showError(
-      error,
-      'خطا هنگام باز کردن صفحه اصلی'
+    console.warn(
+      'YK bridge failed for:',
+      name,
+      error
     );
 
   }
 
-})();
+}
+
+
+// =========================================================
+// Public YK API
+// =========================================================
+
+window.YK =
+  window.YK || {};
+
+
+window.YK.getState =
+  function() {
+
+    return state;
+
+  };
+
+
+window.YK.save =
+  function() {
+
+    return save();
+
+  };
+
+
+window.YK.getSelected =
+  function() {
+
+    return selected;
+
+  };
+
+
+window.YK.setSelected =
+  function(id) {
+
+    selected = id;
+
+  };
+
+
+window.YK.getPoints =
+  function() {
+
+    return points;
+
+  };
+
+
+window.YK.setPoints =
+  function(value) {
+
+    points =
+      Array.isArray(value)
+        ? value
+        : [];
+
+  };
+
+
+window.YK.getMeasureReturn =
+  function() {
+
+    return measureReturn;
+
+  };
+
+
+window.YK.setMeasureReturn =
+  function(value) {
+
+    measureReturn =
+      value || 'add';
+
+  };
+
+
+window.YK.totals =
+  function(landId) {
+
+    return totals(landId);
+
+  };
+
+
+window.YK.uid =
+  function() {
+
+    return uid();
+
+  };
+
+
+window.YK.number =
+  function(value) {
+
+    return n(value);
+
+  };
+
+
+// =========================================================
+// Navigation from data-r buttons
+// =========================================================
+
+document.addEventListener(
+  'click',
+  function(e) {
+
+    const button =
+      e.target.closest('[data-r]');
+
+    if (!button) {
+      return;
+    }
+
+    const route =
+      button.dataset.r;
+
+    if (!route) {
+      return;
+    }
+
+    e.preventDefault();
+
+    go(route);
+
+  }
+);
+
+
+// =========================================================
+// Global API
+// =========================================================
+
+window.go = go;
+
+window.openLand = openLand;
+
+window.editLand = editLand;
+
+window.weatherFor = weatherFor;
+
+window.save = save;
+
+window.toast = toast;
+
+window.uid = uid;
+
+window.n = n;
+
+window.num = num;
+
+window.money = money;
+
+window.totals = totals;
+
+window.jalaliDate = jalaliDate;
+
+window.parseJalaliDate =
+  parseJalaliDate;
+
+window.esc = esc;
+
+
+// =========================================================
+// Measurement helpers
+// =========================================================
+
+window.startMeasureForNewLand =
+  function() {
+
+    selected = null;
+
+    measureReturn = 'add';
+
+    points = [];
+
+    markers = [];
+
+    polygon = null;
+
+    try {
+
+      sessionStorage.removeItem(
+        'yk-pending-measure'
+      );
+
+    } catch (e) {}
+
+    go('measure');
+
+  };
+
+
+window.editLandPoints =
+  function(id) {
+
+    selected = id;
+
+    measureReturn = 'land';
+
+    try {
+
+      localStorage.setItem(
+        'yk-last-land',
+        id
+      );
+
+    } catch (e) {}
+
+    go('measure');
+
+  };
+
+
+// =========================================================
+// Start application
+// =========================================================
+
+try {
+
+  go('home');
+
+} catch (error) {
+
+  console.error(
+    'YarKeshavarz startup error:',
+    error
+  );
+
+  if (app) {
+
+    app.innerHTML = `
+      <div class="card"
+           style="margin:20px;text-align:center">
+
+        <h3>خطا در اجرای برنامه</h3>
+
+        <p class="muted">
+          برنامه نتوانست کامل اجرا شود.
+        </p>
+
+        <button class="primary"
+                onclick="location.reload()">
+          تلاش دوباره
+        </button>
+
+      </div>
+    `;
+
+  }
+
+}
+
+
+// =========================================================
+// Service Worker
+// =========================================================
+
+if ('serviceWorker' in navigator) {
+
+  window.addEventListener(
+    'load',
+    function() {
+
+      navigator.serviceWorker
+        .register('./sw.js')
+        .then(function() {
+
+          console.log(
+            'YarKeshavarz Service Worker registered'
+          );
+
+        })
+        .catch(function(error) {
+
+          console.warn(
+            'Service Worker registration failed:',
+            error
+          );
+
+        });
+
+    }
+  );
+
+}
