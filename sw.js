@@ -1,9 +1,9 @@
 // =========================================================
 // YarKeshavarz Service Worker
-// Modular V17
+// Modular V18
 // =========================================================
 
-const CACHE = 'yar-keshavarz-shell-v17-modular';
+const CACHE = 'yar-keshavarz-shell-v18-modular';
 
 const CORE = [
   './',
@@ -156,10 +156,10 @@ self.addEventListener('fetch', event => {
   }
 
 
-  // -------------------------------------------------------
-  // صفحه اصلی و صفحات HTML
-  // اول نسخه جدید شبکه را امتحان می‌کنیم
-  // -------------------------------------------------------
+  // =======================================================
+  // HTML
+  // همیشه اول نسخه جدید شبکه
+  // =======================================================
 
   if (
     request.mode === 'navigate' ||
@@ -175,14 +175,19 @@ self.addEventListener('fetch', event => {
 
           caches
             .open(CACHE)
-            .then(cache => cache.put(request, copy));
+            .then(cache => {
+              cache.put(request, copy);
+            })
+            .catch(() => {});
 
           return response;
 
         })
+
         .catch(() => {
 
-          return caches.match(request)
+          return caches
+            .match(request)
             .then(cached => {
 
               return cached ||
@@ -198,14 +203,67 @@ self.addEventListener('fetch', event => {
   }
 
 
-  // -------------------------------------------------------
-  // فایل‌های JS / CSS / تصاویر
-  // -------------------------------------------------------
+  // =======================================================
+  // JavaScript / CSS
+  // اول شبکه، سپس کش
+  // =======================================================
+
+  if (
+    request.destination === 'script' ||
+    request.destination === 'style' ||
+    url.pathname.endsWith('.js') ||
+    url.pathname.endsWith('.css')
+  ) {
+
+    event.respondWith(
+
+      fetch(request)
+
+        .then(response => {
+
+          if (
+            response &&
+            response.status === 200 &&
+            response.type === 'basic'
+          ) {
+
+            const copy = response.clone();
+
+            caches
+              .open(CACHE)
+              .then(cache => {
+                cache.put(request, copy);
+              })
+              .catch(() => {});
+
+          }
+
+          return response;
+
+        })
+
+        .catch(() => {
+
+          return caches.match(request);
+
+        })
+
+    );
+
+    return;
+  }
+
+
+  // =======================================================
+  // تصاویر / فونت / فایل‌های دیگر
+  // کش اول، سپس شبکه
+  // =======================================================
 
   event.respondWith(
 
     caches
       .match(request)
+
       .then(cached => {
 
         if (cached) {
@@ -213,9 +271,9 @@ self.addEventListener('fetch', event => {
         }
 
         return fetch(request)
+
           .then(response => {
 
-            // فقط پاسخ معتبر را ذخیره کن
             if (
               response &&
               response.status === 200 &&
@@ -227,10 +285,9 @@ self.addEventListener('fetch', event => {
               caches
                 .open(CACHE)
                 .then(cache => {
-
                   cache.put(request, copy);
-
-                });
+                })
+                .catch(() => {});
 
             }
 
@@ -239,9 +296,13 @@ self.addEventListener('fetch', event => {
           });
 
       })
+
       .catch(() => {
 
-        return caches.match('./index.html');
+        // برای درخواست‌های تصویری یا فایل‌های جانبی
+        // در صورت نبودن شبکه، پاسخ کش‌شده را امتحان می‌کنیم.
+
+        return caches.match(request);
 
       })
 
