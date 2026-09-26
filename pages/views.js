@@ -1,6 +1,502 @@
 /* YarKeshavarz — Page renderers. Functions intentionally remain global for the SPA router. */
 
-function home(){head('خانه');let t=totals(),area=state.lands.reduce((a,l)=>a+n(l.area),0);app.innerHTML=`<section class="hero" style="background-image:linear-gradient(180deg,rgba(0,45,32,.18),rgba(0,45,32,.72)),url('wheat-hero.jpg');background-size:cover;background-position:center;background-repeat:no-repeat;"><h1>یار کشاورز</h1><p>مدیریت حرفه‌ای زمین، کشت، هزینه، انبار و آب‌وهوا</p></section><div class="grid"><div class="card"><span class="muted">زمین‌ها</span><div class="metric">${state.lands.length.toLocaleString('fa-IR')}</div></div><div class="card"><span class="muted">مساحت</span><div class="metric">${area.toLocaleString('fa-IR')}</div><span class="small muted">هکتار</span></div><div class="card"><span class="muted">هزینه</span><div class="metric">${money(t.cost)}</div></div><div class="card"><span class="muted">درآمد</span><div class="metric">${money(t.income)}</div></div></div><div id="homeWeather" class="home-weather"><div class="home-weather-head"><b>🌤️ آب‌وهوای امروز</b><span class="small muted">در حال دریافت…</span></div></div><div class="section"><h3>دسترسی سریع</h3></div><div class="quick"><button onclick="go('add')"><span class="qi">🌾</span>ثبت زمین</button><button onclick="go('measure')"><span class="qi">📐</span>اندازه‌گیری</button><button onclick="go('inventory')"><span class="qi">📦</span>انبار</button><button onclick="go('equipment')"><span class="qi">🚜</span>ادوات</button></div><div class="section"><h3>زمین‌های اخیر</h3><button class="secondary" onclick="go('lands')">همه</button></div><div class="list">${state.lands.slice(0,3).map(landCard).join('')||'<div class="card empty">هنوز زمینی ثبت نشده است.</div>'}</div>`;loadHomeWeather()}
+function home(){
+  head('خانه');
+
+  let t = totals();
+  let area = state.lands.reduce(
+    (a,l) => a + n(l.area),
+    0
+  );
+
+  app.innerHTML = `
+  <div style="
+    padding:12px 12px 95px;
+    max-width:760px;
+    margin:auto;
+  ">
+
+    <!-- HERO -->
+    <section style="
+      min-height:210px;
+      border-radius:26px;
+      overflow:hidden;
+      position:relative;
+      display:flex;
+      flex-direction:column;
+      justify-content:flex-end;
+      padding:24px;
+      color:#fff;
+      margin-bottom:14px;
+      background:
+        linear-gradient(
+          180deg,
+          rgba(0,40,25,.05),
+          rgba(0,35,24,.82)
+        ),
+        url('assets/wheat-hero.jpg')
+        center/cover no-repeat;
+      box-shadow:0 10px 30px rgba(0,0,0,.14);
+    ">
+      <div style="
+        font-size:30px;
+        font-weight:900;
+        margin-bottom:6px;
+      ">
+        یار کشاورز
+      </div>
+
+      <div style="
+        font-size:13px;
+        opacity:.94;
+      ">
+        مدیریت حرفه‌ای زمین، کشت، هزینه و مزرعه
+      </div>
+    </section>
+
+
+    <!-- STATS -->
+    <section style="
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:10px;
+      margin-bottom:14px;
+    ">
+
+      <div class="card" style="
+        border:1px solid #e1ebe6;
+        padding:15px;
+      ">
+        <div style="font-size:12px;color:#718078">
+          🌾 زمین‌ها
+        </div>
+
+        <div style="
+          font-size:24px;
+          font-weight:900;
+          color:#17664b;
+          margin-top:5px;
+        ">
+          ${state.lands.length.toLocaleString('fa-IR')}
+        </div>
+
+        <div style="font-size:11px;color:#8a958f">
+          قطعه ثبت‌شده
+        </div>
+      </div>
+
+
+      <div class="card" style="
+        border:1px solid #e1ebe6;
+        padding:15px;
+      ">
+        <div style="font-size:12px;color:#718078">
+          📐 مساحت
+        </div>
+
+        <div style="
+          font-size:22px;
+          font-weight:900;
+          color:#17664b;
+          margin-top:5px;
+        ">
+          ${area.toLocaleString('fa-IR',{
+            maximumFractionDigits:3
+          })}
+        </div>
+
+        <div style="font-size:11px;color:#8a958f">
+          هکتار
+        </div>
+      </div>
+
+
+      <div class="card" style="
+        border:1px solid #e1ebe6;
+        padding:15px;
+      ">
+        <div style="font-size:12px;color:#718078">
+          💸 هزینه
+        </div>
+
+        <div style="
+          font-size:17px;
+          font-weight:900;
+          margin-top:7px;
+        ">
+          ${money(t.cost)}
+        </div>
+
+        <div style="font-size:11px;color:#8a958f">
+          مجموع هزینه‌ها
+        </div>
+      </div>
+
+
+      <div class="card" style="
+        border:1px solid #e1ebe6;
+        padding:15px;
+      ">
+        <div style="font-size:12px;color:#718078">
+          💰 درآمد
+        </div>
+
+        <div style="
+          font-size:17px;
+          font-weight:900;
+          color:#17664b;
+          margin-top:7px;
+        ">
+          ${money(t.income)}
+        </div>
+
+        <div style="font-size:11px;color:#8a958f">
+          مجموع درآمد
+        </div>
+      </div>
+
+    </section>
+
+
+    <!-- WEATHER -->
+    <section
+      id="homeWeather"
+      class="home-weather"
+      style="
+        margin-bottom:16px;
+        border-radius:22px;
+        overflow:hidden;
+      "
+    >
+      <div style="
+        background:linear-gradient(135deg,#17664b,#23815e);
+        color:white;
+        padding:18px;
+      ">
+        <div style="
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+        ">
+          <div>
+            <div style="
+              font-size:18px;
+              font-weight:900;
+            ">
+              🌤️ آب‌وهوای امروز
+            </div>
+
+            <div style="
+              font-size:11px;
+              opacity:.8;
+              margin-top:4px;
+            ">
+              اطلاعات آب‌وهوا
+            </div>
+          </div>
+
+          <span style="font-size:28px">
+            🌦️
+          </span>
+        </div>
+      </div>
+
+      <div style="
+        background:white;
+        padding:15px;
+      ">
+        <div class="muted small">
+          در حال دریافت اطلاعات آب‌وهوا…
+        </div>
+      </div>
+    </section>
+
+
+    <!-- QUICK ACCESS -->
+    <section style="margin-bottom:18px">
+
+      <div style="
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        margin-bottom:10px;
+      ">
+        <h3 style="
+          margin:0;
+          font-size:17px;
+        ">
+          دسترسی سریع
+        </h3>
+
+        <span style="
+          font-size:11px;
+          color:#84918b;
+        ">
+          ابزارهای پرکاربرد
+        </span>
+      </div>
+
+
+      <div style="
+        display:grid;
+        grid-template-columns:repeat(4,1fr);
+        gap:8px;
+      ">
+
+        <button
+          onclick="go('add')"
+          style="
+            border:0;
+            background:white;
+            border-radius:18px;
+            padding:13px 5px;
+            box-shadow:0 5px 18px rgba(0,0,0,.06);
+            color:#174b39;
+          "
+        >
+          <div style="font-size:25px">🌾</div>
+          <div style="
+            font-size:11px;
+            font-weight:800;
+            margin-top:6px;
+          ">
+            ثبت زمین
+          </div>
+        </button>
+
+
+        <button
+          onclick="go('measure')"
+          style="
+            border:0;
+            background:white;
+            border-radius:18px;
+            padding:13px 5px;
+            box-shadow:0 5px 18px rgba(0,0,0,.06);
+            color:#174b39;
+          "
+        >
+          <div style="font-size:25px">📐</div>
+          <div style="
+            font-size:11px;
+            font-weight:800;
+            margin-top:6px;
+          ">
+            اندازه‌گیری
+          </div>
+        </button>
+
+
+        <button
+          onclick="go('inventory')"
+          style="
+            border:0;
+            background:white;
+            border-radius:18px;
+            padding:13px 5px;
+            box-shadow:0 5px 18px rgba(0,0,0,.06);
+            color:#174b39;
+          "
+        >
+          <div style="font-size:25px">📦</div>
+          <div style="
+            font-size:11px;
+            font-weight:800;
+            margin-top:6px;
+          ">
+            انبار
+          </div>
+        </button>
+
+
+        <button
+          onclick="go('equipment')"
+          style="
+            border:0;
+            background:white;
+            border-radius:18px;
+            padding:13px 5px;
+            box-shadow:0 5px 18px rgba(0,0,0,.06);
+            color:#174b39;
+          "
+        >
+          <div style="font-size:25px">🚜</div>
+          <div style="
+            font-size:11px;
+            font-weight:800;
+            margin-top:6px;
+          ">
+            ادوات
+          </div>
+        </button>
+
+      </div>
+    </section>
+
+
+    <!-- LAND LIST -->
+    <section>
+
+      <div style="
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        margin-bottom:10px;
+      ">
+        <h3 style="
+          margin:0;
+          font-size:17px;
+        ">
+          🌾 زمین‌های من
+        </h3>
+
+        <button
+          class="secondary"
+          onclick="go('lands')"
+          style="
+            padding:7px 12px;
+            font-size:11px;
+          "
+        >
+          مشاهده همه
+        </button>
+      </div>
+
+
+      <div class="list">
+        ${
+          state.lands.slice(0,3).map(landCard).join('')
+          ||
+          `
+          <div class="card" style="
+            text-align:center;
+            padding:25px;
+          ">
+            <div style="font-size:40px">🌱</div>
+
+            <b>
+              هنوز زمینی ثبت نشده است
+            </b>
+
+            <p class="small muted">
+              اولین زمین خودت را ثبت کن.
+            </p>
+
+            <button
+              class="primary"
+              onclick="go('add')"
+            >
+              ＋ ثبت زمین
+            </button>
+          </div>
+          `
+        }
+      </div>
+
+    </section>
+
+  </div>
+
+
+  <!-- BOTTOM NAVIGATION -->
+  <nav style="
+    position:fixed;
+    right:0;
+    left:0;
+    bottom:0;
+    z-index:99990;
+    height:72px;
+    background:rgba(255,255,255,.97);
+    border-top:1px solid #dfe9e4;
+    box-shadow:0 -6px 25px rgba(0,0,0,.10);
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    padding:
+      5px
+      5px
+      calc(5px + env(safe-area-inset-bottom));
+    backdrop-filter:blur(12px);
+  ">
+
+    <button
+      onclick="go('home')"
+      style="
+        border:0;
+        background:transparent;
+        color:#17664b;
+        font-weight:900;
+        font-size:10px;
+      "
+    >
+      <div style="font-size:22px">🏠</div>
+      خانه
+    </button>
+
+
+    <button
+      onclick="go('news')"
+      style="
+        border:0;
+        background:transparent;
+        color:#68766f;
+        font-weight:700;
+        font-size:10px;
+      "
+    >
+      <div style="font-size:22px">📰</div>
+      اخبار
+    </button>
+
+
+    <button
+      onclick="go('yar')"
+      style="
+        border:0;
+        background:transparent;
+        color:#68766f;
+        font-weight:700;
+        font-size:10px;
+      "
+    >
+      <div style="font-size:22px">🌾</div>
+      کشاورزیار
+    </button>
+
+
+    <button
+      onclick="go('ads')"
+      style="
+        border:0;
+        background:transparent;
+        color:#68766f;
+        font-weight:700;
+        font-size:10px;
+      "
+    >
+      <div style="font-size:22px">📢</div>
+      تبلیغات
+    </button>
+
+
+    <button
+      onclick="go('account')"
+      style="
+        border:0;
+        background:transparent;
+        color:#68766f;
+        font-weight:700;
+        font-size:10px;
+      "
+    >
+      <div style="font-size:22px">👤</div>
+      اکانت
+    </button>
+
+  </nav>
+  `;
+
+  loadHomeWeather();
+}
 
 function lands(){head('زمین‌ها');app.innerHTML=`<div class="section"><h2>زمین‌های من</h2><button class="primary" onclick="go('add')">＋ زمین جدید</button></div><div class="list">${state.lands.map(landCard).join('')||'<div class="card empty">هنوز زمینی ثبت نشده است.</div>'}</div>`}
 
