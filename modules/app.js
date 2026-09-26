@@ -874,10 +874,31 @@ window.editLandPoints =
 // =========================================================
 
 try {
-
   go('home');
-
 } catch (error) {
+  console.error('YarKeshavarz startup error:', error);
+
+  if (app) {
+    app.innerHTML = `
+      <div class="card" style="margin:20px;text-align:center">
+        <h3 style="color:#b42318">خطای واقعی برنامه</h3>
+
+        <p class="muted" style="direction:ltr;text-align:left;word-break:break-word">
+          ${String(error && error.message ? error.message : error)}
+        </p>
+
+        <details style="text-align:left;direction:ltr;margin-top:15px">
+          <summary>جزئیات خطا</summary>
+          <pre style="white-space:pre-wrap;word-break:break-word;font-size:12px">${String(error && error.stack ? error.stack : '')}</pre>
+        </details>
+
+        <button class="primary" onclick="location.reload()">
+          تلاش دوباره
+        </button>
+      </div>
+    `;
+  }
+}
 
   console.error(
     'YarKeshavarz startup error:',
