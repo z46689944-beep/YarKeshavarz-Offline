@@ -774,7 +774,11 @@
         {
           zoomControl: true,
           touchZoom: true,
-          dragging: true
+          dragging: true,
+          scrollWheelZoom: true,
+          doubleClickZoom: true,
+          boxZoom: false,
+          keyboard: true
         }
       );
 
