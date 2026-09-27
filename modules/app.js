@@ -472,7 +472,7 @@ function editLand(id) {
 // Weather
 // =========================================================
 
-function weatherFor(land) {
+function weatherForObject(land) {
 
   if (!land) {
     return null;
@@ -816,7 +816,7 @@ window.openLand = openLand;
 
 window.editLand = editLand;
 
-window.weatherFor = weatherFor;
+window.weatherForObject = weatherForObject;
 
 window.save = save;
 

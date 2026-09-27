@@ -14,6 +14,168 @@ function landThumb(l){
 
 function landCard(l){let t=totals(l.id);return `<article class="card"><div class="row land-title-row"><div class="land-title-wrap">${landThumb(l)}<div class="land-title-text"><h3>${esc(l.name)}</h3><span class="badge">${l.ownership==='rent'?'اجاره‌ای':'مالک'}</span></div></div><b>${n(l.area).toLocaleString('fa-IR')} هکتار</b></div><p class="muted small">${esc(l.region||'موقعیت ثبت نشده')} · ${esc(l.crop||'کشت ثبت نشده')}</p><div class="row small"><span>هزینه: ${money(t.cost)}</span><span>سود: ${money(t.profit)}</span></div><div class="actions"><button class="primary" onclick="openLand('${l.id}')">پرونده زمین</button><button class="secondary" onclick="weatherFor('${l.id}')">هوا</button></div></article>`}
 
+
+/* =========================================================
+   YarKeshavarz — Add Land / Registration
+   ========================================================= */
+
+function add(){
+  head('ثبت زمین');
+
+  let pending = null;
+  try {
+    const raw = sessionStorage.getItem('yk-pending-measure');
+    if(raw) pending = JSON.parse(raw);
+  } catch(e) {
+    pending = null;
+  }
+
+  const area = pending && Number.isFinite(Number(pending.areaM2))
+    ? Number(pending.areaM2)
+    : 0;
+
+  const lat = pending ? Number(pending.lat) : '';
+  const lng = pending ? Number(pending.lng) : '';
+
+  app.innerHTML = `
+    <div class="section register-page">
+      <div class="page-header-row">
+        <div>
+          <h2>🌾 ثبت زمین</h2>
+          <p class="small muted">اطلاعات زمین را ثبت کن یا ابتدا آن را روی نقشه اندازه‌گیری کن.</p>
+        </div>
+        <button type="button" class="secondary" onclick="go('home')">بازگشت</button>
+      </div>
+
+      <div class="register-card">
+        <div class="register-actions-top">
+          <button type="button" class="primary" onclick="startMeasureForNewLand()">
+            📐 اندازه‌گیری روی نقشه
+          </button>
+          ${area > 0 ? `<span class="measure-pending">✅ اندازه‌گیری آماده ثبت — ${Math.round(area).toLocaleString('fa-IR')} مترمربع</span>` : ''}
+        </div>
+
+        <form id="landRegisterForm" class="register-form">
+          <div class="register-two">
+            <div class="field">
+              <label>نام زمین *</label>
+              <input name="name" required placeholder="مثلاً زمین شمالی">
+            </div>
+
+            <div class="field">
+              <label>روستا / شهر / منطقه</label>
+              <input name="region" placeholder="مثلاً گوکتپه">
+            </div>
+
+            <div class="field">
+              <label>مساحت (هکتار)</label>
+              <input name="area" inputmode="decimal" value="${area ? (area/10000).toFixed(4) : ''}" placeholder="مثلاً ۲٫۵">
+            </div>
+
+            <div class="field">
+              <label>محصول</label>
+              <input name="crop" placeholder="مثلاً گندم میهن">
+            </div>
+
+            <div class="field">
+              <label>نوع خاک</label>
+              <input name="soil" placeholder="مثلاً لومی">
+            </div>
+
+            <div class="field">
+              <label>منبع آب</label>
+              <input name="water" placeholder="چاه، قنات، رودخانه...">
+            </div>
+
+            <div class="field">
+              <label>روش آبیاری</label>
+              <input name="irrigation" placeholder="قطره‌ای، بارانی، غرقابی">
+            </div>
+
+            <div class="field">
+              <label>نوع مالکیت</label>
+              <select name="ownership">
+                <option value="own">🏠 ملکی</option>
+                <option value="rent">🔑 اجاره‌ای</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>توضیحات</label>
+            <textarea name="notes" placeholder="توضیحات مهم درباره زمین..."></textarea>
+          </div>
+
+          <div class="register-actions">
+            <button type="button" class="secondary" onclick="go('lands')">انصراف</button>
+            <button type="submit" class="primary">💾 ثبت زمین</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+
+  const form = document.getElementById('landRegisterForm');
+  if(!form) return;
+
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+
+    const f = new FormData(form);
+    const name = String(f.get('name') || '').trim();
+
+    if(!name){
+      toast('نام زمین را وارد کن.');
+      return;
+    }
+
+    const areaHa = n(f.get('area'));
+    const points = pending && Array.isArray(pending.points)
+      ? pending.points.map(p => [Number(p[0]), Number(p[1])])
+      : [];
+
+    const land = {
+      id: uid(),
+      name,
+      area: areaHa,
+      areaM2: pending && pending.areaM2 ? Number(pending.areaM2) : areaHa * 10000,
+      perimeter: pending && pending.perimeter ? Number(pending.perimeter) : 0,
+      lat: Number.isFinite(lat) && lat ? lat : null,
+      lng: Number.isFinite(lng) && lng ? lng : null,
+      region: String(f.get('region') || '').trim(),
+      crop: String(f.get('crop') || '').trim(),
+      soil: String(f.get('soil') || '').trim(),
+      water: String(f.get('water') || '').trim(),
+      irrigation: String(f.get('irrigation') || '').trim(),
+      ownership: String(f.get('ownership') || 'own'),
+      notes: String(f.get('notes') || '').trim(),
+      photos: [],
+      measurement: points.length >= 3 ? {
+        points,
+        areaM2: Number(pending.areaM2 || areaHa * 10000),
+        perimeter: Number(pending.perimeter || 0),
+        source: 'online-map',
+        updatedAt: new Date().toISOString()
+      } : null
+    };
+
+    state.lands.push(land);
+    save();
+
+    try {
+      sessionStorage.removeItem('yk-pending-measure');
+    } catch(e) {}
+
+    selected = land.id;
+
+    toast('✅ زمین با موفقیت ثبت شد.');
+    setTimeout(() => openLand(land.id), 250);
+  });
+}
+
+/* مسیرهای سازگار با نسخه‌های قبلی */
+window.addLand = add;
+
 function setOwnership(v){const hidden=document.getElementById('ownershipValue');if(hidden)hidden.value=v;document.querySelectorAll('.ownership-option').forEach(b=>b.classList.toggle('active',b.dataset.value===v));const box=document.getElementById('rentDetails');if(box)box.hidden=v!=='rent'}
 
 function startMeasureForNewLand(){selected=null;measureReturn='add';go('measure')}

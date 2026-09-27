@@ -38,8 +38,58 @@ function nearestHourly(d,count=12){return Array.from({length:Math.min(count,d.ho
 
 function hourlyHtml(d,count=12,compact=false){let idx=nearestHourly(d,count);return `<div class="${compact?'home-hourly':'hourly-grid'}">${idx.map(i=>`<div class="${compact?'home-hour':'hour-card'}"><b>${fmtHour(d.hourly.time[i])}</b><span class="${compact?'':'hi'}">${WX[d.hourly.weather_code[i]]||'🌤️'}</span><strong>${Math.round(d.hourly.temperature_2m[i])}°</strong><small>💧 ${d.hourly.relative_humidity_2m[i]}%<br>🌧️ ${d.hourly.precipitation_probability[i]}%<br>💨 ${Math.round(d.hourly.wind_speed_10m[i])} km/h</small></div>`).join('')}</div>`}
 
-function loadHomeWeather(){let box=document.getElementById('homeWeather');if(!box)return;let l=state.lands.find(x=>x.lat!=null&&x.lng!=null),d=offlineWeather(l?l.name:'حالت آفلاین'),c=d.current;box.innerHTML=`<div class="home-weather-head"><b>🌤️ آب‌وهوای آفلاین</b><button class="secondary" onclick="go('weather')">جزئیات</button></div><div class="home-weather-main"><div><div class="small muted">${esc(l?l.name:'بدون داده زنده')}</div><div class="home-weather-temp">${Math.round(c.temperature_2m)}°C</div><div class="small">احساس ${Math.round(c.apparent_temperature)}° · رطوبت ${c.relative_humidity_2m}% · باد ${Math.round(c.wind_speed_10m)} km/h</div></div><div class="home-weather-icon">${WX[c.weather_code]||'🌤️'}</div></div><div class="small muted" style="margin-top:10px">پیش‌بینی نمونه محلی — بدون اینترنت</div>${hourlyHtml(d,8,true)}`}
+function loadHomeWeather(){
+  const box=document.getElementById('homeWeather');
+  if(!box)return;
 
+  const l=state.lands.find(x=>x.lat!=null&&x.lng!=null);
+  const d=offlineWeather(l?l.name:'حالت آفلاین');
+  const c=d.current;
+
+  const daily=d.daily.time.map((day,i)=>`
+    <div class="home-day-card">
+      <b>${new Date(day).toLocaleDateString('fa-IR',{weekday:'short',month:'numeric',day:'numeric'})}</b>
+      <span>${WX[d.daily.weather_code[i]]||'🌤️'}</span>
+      <strong>${Math.round(d.daily.temperature_2m_max[i])}° / ${Math.round(d.daily.temperature_2m_min[i])}°</strong>
+      <small>🌧️ ${d.daily.precipitation_probability_max[i]}%</small>
+    </div>
+  `).join('');
+
+  box.innerHTML=`
+    <div class="home-weather-head">
+      <b>🌤️ آب‌وهوای آفلاین</b>
+      <button class="secondary" onclick="go('weather')">جزئیات</button>
+    </div>
+
+    <div class="home-weather-main">
+      <div>
+        <div class="small muted">${esc(l?l.name:'بدون داده زنده')}</div>
+        <div class="home-weather-temp">${Math.round(c.temperature_2m)}°C</div>
+        <div class="small">
+          احساس ${Math.round(c.apparent_temperature)}°
+          · رطوبت ${c.relative_humidity_2m}%
+          · باد ${Math.round(c.wind_speed_10m)} km/h
+        </div>
+      </div>
+
+      <div class="home-weather-icon">
+        ${WX[c.weather_code]||'🌤️'}
+      </div>
+    </div>
+
+    <div class="weather-section-label">⏱️ پیش‌بینی ساعتی</div>
+    ${hourlyHtml(d,8,true)}
+
+    <div class="weather-section-label">📅 پیش‌بینی روزانه</div>
+    <div class="home-daily">
+      ${daily}
+    </div>
+
+    <div class="small muted weather-offline-note">
+      پیش‌بینی نمونه محلی — بدون اینترنت
+    </div>
+  `;
+}
 function loadLandWeather(l){let box=document.getElementById('landWeather');if(!box)return;if(l.lat==null||l.lng==null){box.classList.remove('loading');box.innerHTML="📍 موقعیت این زمین ثبت نشده است.<br><button class='secondary' style='margin-top:7px' onclick=\"go(\'measure\')\">ثبت موقعیت آفلاین</button>";return}let d=offlineWeather(l.name),c=d.current;box.classList.remove('loading');box.innerHTML=`<div class="row"><div><div class="small muted">آب‌وهوای آفلاین ${esc(l.name)}</div><div class="temp">${Math.round(c.temperature_2m)}°C</div></div><div style="font-size:45px">${WX[c.weather_code]||'🌤️'}</div></div><div class="small muted" style="margin-top:5px">رطوبت ${c.relative_humidity_2m}% · باد ${Math.round(c.wind_speed_10m)} km/h</div>`}
 
 function loadGeneralWeather(){head('آب‌وهوا');let d=offlineWeather('حالت آفلاین'),c=d.current;app.innerHTML=`<div class="weather-now"><div class="row"><div><div class="small">حالت آفلاین</div><div class="weather-temp">${Math.round(c.temperature_2m)}°</div><div class="small">${WX[c.weather_code]||'🌤️'} · احساس ${Math.round(c.apparent_temperature)}° · رطوبت ${c.relative_humidity_2m}%</div></div><div class="weather-icon">${WX[c.weather_code]||'🌤️'}</div></div><div class="small" style="margin-top:8px">داده نمونه محلی؛ برای پیش‌بینی زنده از نسخه آنلاین استفاده کن.</div></div><div class="section"><h3>⏱️ پیش‌بینی ساعتی آفلاین</h3></div>${hourlyHtml(d,12,false)}<div class="section"><h3>📅 پیش‌بینی ۷ روزه آفلاین</h3></div><div class="forecast">${d.daily.time.map((day,i)=>`<div class="day"><b>${new Date(day).toLocaleDateString('fa-IR',{weekday:'long',month:'numeric',day:'numeric'})}</b><span>${WX[d.daily.weather_code[i]]||'🌤️'}</span><span>${Math.round(d.daily.temperature_2m_min[i])}° / ${Math.round(d.daily.temperature_2m_max[i])}°</span><span>${d.daily.precipitation_probability_max[i]}%</span></div>`).join('')}</div>`}
