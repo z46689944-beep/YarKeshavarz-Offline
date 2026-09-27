@@ -361,7 +361,7 @@ function landSchematic(l){
   return `<div class="schematic-modern"><div class="schematic-head"><b>📐 شماتیک زمین</b><span class="badge">${ps.length.toLocaleString('fa-IR')} نقطه</span></div><svg viewBox="0 0 320 220" role="img" aria-label="شماتیک ${esc(l.name||'زمین')}"><defs><linearGradient id="sg-${esc(l.id)}" x1="0" y1="0" x2="1" y2="1"><stop offset="0"/><stop offset="1" stop-color="#17664b"/></linearGradient><pattern id="grid-${esc(l.id)}" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0L0 0 0 20" fill="none" stroke="#dce9e2" stroke-width="1"/></pattern></defs><rect width="320" height="220" fill="url(#grid-${esc(l.id)})" rx="17"/><polygon points="${poly}" fill="#17664b" fill-opacity=".14" stroke="#17664b" stroke-width="3.5" stroke-linejoin="round"/>${dots}<g transform="translate(278 18)"><circle cx="12" cy="12" r="12" fill="#fff" stroke="#d8e5df"/><text x="12" y="16" text-anchor="middle" font-size="12" font-weight="700" fill="#17664b">N</text></g></svg><div class="schematic-meta"><div><span>المساحت</span><b>${Math.round(m2).toLocaleString('fa-IR')} مترمربع</b></div><div><span>هکتار</span><b>${ha.toLocaleString('fa-IR',{maximumFractionDigits:3})}</b></div><div><span>محیط</span><b>${Math.round(per).toLocaleString('fa-IR')} متر</b></div></div><div class="edit-points"><button class="edit-points-btn" onclick="editLandPoints('${l.id}')">✏️ ویرایش نقاط زمین روی نقشه</button></div></div>`;
 }
 
-function openLand(id){
+function openLandView(id){
  selected=id;localStorage.setItem('yk-last-land',id);let l=state.lands.find(x=>x.id===id);if(!l)return;head(l.name);
  let photos=l.photos||[];
  app.innerHTML=`<div class="section"><h2>${esc(l.name)}</h2><button class="secondary" onclick="go('lands')">بازگشت</button></div>
@@ -554,7 +554,7 @@ const l=selected?yarLand(selected):null;
     <form class="yarpro-form yar-final-form" onsubmit="event.preventDefault();yarSend()"><button type="button" class="yarpro-type" onclick="yarFocusInput()" aria-label="تایپ پیام" title="تایپ پیام">⌨️</button><button type="button" class="yarpro-camera" onclick="yarPickCamera()" aria-label="افزودن عکس">📷</button><input id="yarInput" autocomplete="off" placeholder="${l?'درباره همین زمین سؤال کن…':'هر سؤال کشاورزی که داری…'}"><button type="submit" class="yarpro-send" aria-label="ارسال پیام" title="ارسال پیام">➤</button></form>
     <div class="yar-final-tools" aria-label="ابزارهای کشاورزیار">
       <button type="button" onclick="${l?`yarAnalyzeLand('${l.id}')`:`yarAsk('اطلاعات و وضعیت مزرعه را بررسی کن')`}"><span>🌾</span><b>تحلیل مزرعه</b></button>
-      <button type="button" onclick="yarAsk('برای کشت چه پیشنهادی داری؟')"><span>🌱</span><b>مشاور کشت</b></button>
+      <button type="button" onclick="openCropAdvisor()"><span>🌱</span><b>مشاور کشت</b></button>
       <button type="button" onclick="yarAsk('وضعیت انبار و نهاده را بررسی کن')"><span>📦</span><b>انبار و نهاده</b></button>
       <button type="button" onclick="yarAsk('اقتصاد مزرعه و هزینه و درآمد را بررسی کن')"><span>💰</span><b>اقتصاد مزرعه</b></button>
       <button type="button" onclick="yarPickPhoto()"><span>📷</span><b>تحلیل عکس</b></button>
