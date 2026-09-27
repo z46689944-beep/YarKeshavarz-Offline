@@ -2427,6 +2427,39 @@ tr:last-child td{
   font-size:11px;
   color:#17664b;
 }
+/* ===== FIX: فعال شدن اسکرول صفحه اصلی ===== */
+html,
+body {
+  min-height: 100%;
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+body {
+  position: relative;
+}
+
+#app {
+  min-height: 100vh;
+  height: auto;
+  overflow: visible !important;
+}
+
+/* صفحه‌های معمولی قابل اسکرول باشند */
+.page,
+.page-content,
+main,
+section {
+  overflow: visible;
+}
+
+/* فقط خود نقشه کنترل لمسی خودش را داشته باشد */
+#measureMap,
+.measure-map {
+  touch-action: none;
+}
 
 .home-day-card small{
   font-size:9px;
