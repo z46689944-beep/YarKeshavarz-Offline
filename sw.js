@@ -3,7 +3,7 @@
 // Modular V18
 // =========================================================
 
-const CACHE = 'yar-keshavarz-shell-v18-modular';
+const CACHE = 'yar-keshavarz-shell-v19-modular';
 
 const CORE = [
   './',
@@ -27,6 +27,7 @@ const CORE = [
   './modules/manager.js',
   './modules/settings.js',
   './modules/backup.js',
+  './modules/crop-advisor.js',
   './modules/offline-loader.js',
 
   // Pages
@@ -65,7 +66,7 @@ const CORE = [
   './admin.css',
 
   // Data
-  './data/knowledge/knowledge.json'
+  './data/Knowledge/knowledge.json'
 ];
 
 
