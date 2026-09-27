@@ -1739,7 +1739,7 @@ function yar(){
     <form class="yarpro-form yar-final-form" onsubmit="event.preventDefault();yarSend()"><button type="button" class="yarpro-type" onclick="yarFocusInput()" aria-label="تایپ پیام" title="تایپ پیام">⌨️</button><button type="button" class="yarpro-camera" onclick="yarPickCamera()" aria-label="افزودن عکس">📷</button><input id="yarInput" autocomplete="off" placeholder="${l?'درباره همین زمین سؤال کن…':'هر سؤال کشاورزی که داری…'}"><button type="submit" class="yarpro-send" aria-label="ارسال پیام" title="ارسال پیام">➤</button></form>
     <div class="yar-final-tools" aria-label="ابزارهای کشاورزیار">
       <button type="button" onclick="${l?`yarAnalyzeLand('${l.id}')`:`yarAsk('اطلاعات و وضعیت مزرعه را بررسی کن')`}"><span>🌾</span><b>تحلیل مزرعه</b></button>
-      <button type="button" onclick="yarAsk('برای کشت چه پیشنهادی داری؟')"><span>🌱</span><b>مشاور کشت</b></button>
+      <button type="button" onclick="openCropAdvisor()"><span>🌱</span><b>مشاور کشت</b></button>
       <button type="button" onclick="yarAsk('وضعیت انبار و نهاده را بررسی کن')"><span>📦</span><b>انبار و نهاده</b></button>
       <button type="button" onclick="yarAsk('اقتصاد مزرعه و هزینه و درآمد را بررسی کن')"><span>💰</span><b>اقتصاد مزرعه</b></button>
       <button type="button" onclick="yarPickPhoto()"><span>📷</span><b>تحلیل عکس</b></button>
@@ -2346,6 +2346,14 @@ html.yk-font-large{font-size:108%}
   .yar-final .yar-mode-panel{padding:9px 10px!important}
   .yar-final .yarpro-chat{padding:8px 6px 12px!important}
 }
+
+/* ===== MOBILE SCROLL / TOUCH STABILITY FIX ===== */
+html,body{min-height:100%;height:auto;overflow-x:hidden;overflow-y:auto!important;-webkit-overflow-scrolling:touch}
+body{position:relative}
+#app{min-height:100vh;height:auto;overflow:visible!important}
+main,.page,.page-content,section{overflow:visible}
+.measure-wrap{touch-action:auto}
+#measureMap,.measure-map,.leaflet-container{touch-action:none!important;-webkit-user-select:none;user-select:none}
 </style>
 
 <script src="./data/crop-catalog.js"></script>
